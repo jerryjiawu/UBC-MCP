@@ -1,2 +1,6 @@
 .env
 .venv
+.chrome_profile
+links.json
+screenshots/
+__pycache__/
