@@ -6,13 +6,29 @@ import os
 import subprocess
 import tempfile
 import time
+import requests
 load_dotenv()
 
 USERNAME = os.getenv("CWL_USERNAME")
 PASSWORD = os.getenv("CWL_PASSWORD")
+DUO_WEBHOOK_URL = os.getenv("DISCORD_DUO_WEBHOOK_URL")
 
 # Persistent Chrome profile dir so the CWL/Duo "remember this browser" trust survives across runs
 PROFILE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".chrome_profile")
+
+
+def _notify_duo_push():
+    """Best-effort Discord notification that a Duo push was just sent -- never blocks or raises."""
+    if not DUO_WEBHOOK_URL:
+        return
+    try:
+        requests.post(
+            DUO_WEBHOOK_URL,
+            json={"content": "A Duo push was just sent for your CWL login. Take your time and approve it on your phone whenever you're ready."},
+            timeout=5,
+        )
+    except Exception:
+        pass
 
 
 def _kill_orphaned_chromedriver():
@@ -29,10 +45,21 @@ def get_driver(profile_dir=None):
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
 
+    # Duo push approval happens on the phone, not in the browser window, and the
+    # webhook notification + screenshot()/execute_script() tools cover visibility,
+    # so headless is safe by default. Set SELENIUM_HEADLESS=0 to watch it run.
+    headless = os.getenv("SELENIUM_HEADLESS", "1") != "0"
+
     def build(user_data_dir):
         options = Options()
         options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument("--profile-directory=Default")
+        if headless:
+            options.add_argument("--headless=new")
+            options.add_argument("--window-size=1920,1080")
+            # without these, headless Chrome reliably hangs on startup in this environment
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
         return webdriver.Chrome(options=options)
 
     target_dir = profile_dir or PROFILE_DIR
@@ -69,6 +96,13 @@ def CWL_login(driver, url):
 
     #press enter key
     password_field.send_keys(Keys.RETURN)
+
+    # briefly watch for the Duo redirect so we can notify without blocking on the actual approval
+    for _ in range(10):
+        time.sleep(0.5)
+        if "duosecurity.com" in driver.current_url:
+            _notify_duo_push()
+            break
 
 if __name__ == "__main__":
     driver = get_driver()

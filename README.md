@@ -8,10 +8,11 @@ A suite of MCP (Model Context Protocol) tools for platforms used by UBC professo
 
 Early development. Currently implemented:
 
-- `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run.
+- `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run. Runs headless by default (set `SELENIUM_HEADLESS=0` in `.env` to watch it run in a visible window). Optionally posts a Discord webhook notification the moment a Duo push is sent.
 - `mcp_server.py` — MCP server exposing browser automation, page reading, file access, and (opt-in) script execution as tools for agents.
 - `google_tasks_mcp.py` — separate MCP server exposing Google Tasks (list/create/complete/delete tasks) to agents.
 - `mcp_manager.py` — local web dashboard to start/stop/monitor both MCP servers.
+- `discord_bot.py` — a Discord bot ("Willow") that answers questions about your UBC status (from `src/context/ubc-brief.txt`) via the Gemini API, replying with formatted embeds.
 - `canvas.py` — placeholder for upcoming Canvas integration.
 
 ## Requirements
@@ -101,6 +102,26 @@ Then open http://127.0.0.1:5055. It binds to `127.0.0.1` only and has **no authe
 
 Note: MCP servers use stdio transport, so a server started from the manager isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). The manager is a process supervisor/log viewer for local development, not an MCP client.
 
+### Discord Bot ("Willow")
+
+`discord_bot.py` is a standalone Discord bot with two jobs:
+
+1. **Duo push notifications** — handled by `src/cwl.py` directly via a Discord webhook (`DISCORD_DUO_WEBHOOK_URL`), independent of whether the bot process is running. The moment a CWL login redirects to Duo, a message is posted so you know to check your phone.
+2. **Chat about your UBC status** — DM the bot or @mention it in a server, and it answers using `src/context/ubc-brief.txt` as context, via the Claude API (Anthropic), replying with a soft-pink embed and a warm, calming tone.
+
+Setup:
+
+1. Create a Discord bot at the [Discord Developer Portal](https://discord.com/developers/applications), enable the **Message Content** intent, invite it to your server (or just DM it), and add its token to `.env` as `DISCORD_BOT_TOKEN`.
+2. Create a webhook on a channel you want Duo notifications posted to (channel settings → Integrations → Webhooks) and add the URL to `.env` as `DISCORD_DUO_WEBHOOK_URL`.
+3. Add your [Gemini API key](https://aistudio.google.com/apikey) to `.env` as `GEMINI_API_KEY`.
+4. Run it:
+
+   ```powershell
+   python discord_bot.py
+   ```
+
+**Cost control:** uses Gemini Flash by default (cheapest/fastest tier, has a free tier too, override with `DISCORD_BOT_MODEL`), only responds to DMs/@mentions (not every message in a channel), keeps no conversation history (single-turn per message), and caps the brief context to ~6000 characters. Check [Google AI Studio's usage/billing page](https://aistudio.google.com/) to confirm actual spend for your usage pattern.
+
 ## Project Structure
 
 ```
@@ -108,11 +129,14 @@ canvas.py           # Canvas MCP tools (in progress)
 mcp_server.py       # MCP server: browser automation, file access, script execution
 google_tasks_mcp.py # MCP server: Google Tasks
 mcp_manager.py      # Web dashboard to start/stop/monitor the MCP servers
+discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + UBC brief Q&A
 links.json          # saved platform shortcuts (gitignored, created by save_link)
 google_token.json   # Google OAuth refresh token (gitignored, created by --auth)
 requirements.txt    # Python dependencies
 src/
   cwl.py            # CWL login automation
+  context/
+    ubc-brief.txt   # status brief used as context by discord_bot.py
 ```
 
 ## Roadmap

@@ -7,3 +7,6 @@ google-auth-oauthlib
 flask
 pystray
 pillow
+requests
+discord.py
+google-genai
