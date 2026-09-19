@@ -52,6 +52,7 @@ python src/cwl.py
 `mcp_server.py` runs an MCP server (stdio transport) that gives an agent tools to:
 
 - `open_url` / `authenticate` — navigate a shared browser session, logging in via CWL automatically when needed.
+- `restart_browser` — force-quit and recreate the shared browser session; use if browser tools start erroring (the driver also self-heals automatically on the next call if it detects a dead session, e.g. after a Chrome crash).
 - `open_platform` / `save_link` — open a known UBC platform (`webwork`, `canvas`, `brightspace`, `stemble`) or a saved shortcut by name; `save_link(name, url)` records new ones in `links.json`.
 - `list_tabs` / `open_tab` / `switch_tab` / `close_tab` — manage multiple browser tabs.
 - `get_page_content` / `get_links` / `wait_for` / `screenshot` — read text/links, wait for an element to load, or capture a screenshot.
@@ -101,6 +102,8 @@ python mcp_manager.py
 Then open http://127.0.0.1:5055. It binds to `127.0.0.1` only and has **no authentication** — do not expose it on a network interface or add port forwarding, since anyone who can reach it could start/stop/restart these processes.
 
 Note: MCP servers use stdio transport, so a server started from the manager isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). The manager is a process supervisor/log viewer for local development, not an MCP client.
+
+**Important limitation:** the manager's `ubc-mcp`/`google-tasks-mcp` processes are a **separate, independent set** from whatever Claude Desktop spawned itself. Its Start/Stop/Restart buttons only affect the manager's own copies — they do **not** restart or otherwise touch the instance Claude Desktop is actually talking to over its own stdio pipes. If the live Claude-connected `ubc-mcp` gets into a bad state (e.g. a dead browser session), restarting it from the dashboard won't fix it; you need to either rely on `restart_browser`/the self-healing driver (see below) or restart Claude Desktop itself so it respawns its own copy.
 
 ### Discord Bot ("Willow")
 

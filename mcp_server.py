@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -78,7 +78,9 @@ def _get_driver():
         try:
             _ = _driver.title  # cheap call that fails if Chrome/chromedriver died underneath us
             return _driver
-        except WebDriverException:
+        except Exception:
+            # covers WebDriverException as well as raw urllib3 connection errors
+            # (a dead chromedriver process doesn't always get wrapped by selenium)
             try:
                 _driver.quit()
             except Exception:
