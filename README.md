@@ -10,6 +10,8 @@ Early development. Currently implemented:
 
 - `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run.
 - `mcp_server.py` — MCP server exposing browser automation, page reading, file access, and (opt-in) script execution as tools for agents.
+- `google_tasks_mcp.py` — separate MCP server exposing Google Tasks (list/create/complete/delete tasks) to agents.
+- `mcp_manager.py` — local web dashboard to start/stop/monitor both MCP servers.
 - `canvas.py` — placeholder for upcoming Canvas integration.
 
 ## Requirements
@@ -25,12 +27,16 @@ Early development. Currently implemented:
    pip install -r requirements.txt
    ```
 
-2. Create a `.env` file in the project root with your CWL credentials:
+2. Create a `.env` file in the project root with your credentials:
 
    ```
    CWL_USERNAME=your_username
    CWL_PASSWORD=your_password
+   GOOGLE_CLIENT_ID=your_google_oauth_client_id
+   GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
    ```
+
+   The Google credentials come from an OAuth "Desktop app" client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) with the Tasks API enabled.
 
 ## Usage
 
@@ -71,15 +77,42 @@ python mcp_server.py
 - `read_file` / `list_dir` can expose secrets (e.g. `.env`) to any connected agent — be mindful of what you point them at.
 - Only run this server locally over stdio. Do not expose it over a network.
 
+### Google Tasks MCP Server
+
+`google_tasks_mcp.py` is a separate MCP server (stdio transport) exposing Google Tasks: `list_task_lists`, `list_tasks`, `create_task`, `complete_task`, `delete_task`.
+
+First-time setup requires an interactive browser sign-in, which can't happen inside a normal MCP tool call, so run this once:
+
+```powershell
+python google_tasks_mcp.py --auth
+```
+
+This opens a browser for Google's OAuth consent screen and saves a refresh token to `google_token.json` (gitignored). After that, add the server to your MCP client config and it refreshes the token silently.
+
+### MCP Manager (web dashboard)
+
+`mcp_manager.py` runs a local Flask dashboard to start/stop/restart `mcp_server.py` and `google_tasks_mcp.py` and tail their logs:
+
+```powershell
+python mcp_manager.py
+```
+
+Then open http://127.0.0.1:5055. It binds to `127.0.0.1` only and has **no authentication** — do not expose it on a network interface or add port forwarding, since anyone who can reach it could start/stop/restart these processes.
+
+Note: MCP servers use stdio transport, so a server started from the manager isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). The manager is a process supervisor/log viewer for local development, not an MCP client.
+
 ## Project Structure
 
 ```
-canvas.py        # Canvas MCP tools (in progress)
-mcp_server.py    # MCP server: browser automation, file access, script execution
-links.json       # saved platform shortcuts (gitignored, created by save_link)
-requirements.txt # Python dependencies
+canvas.py           # Canvas MCP tools (in progress)
+mcp_server.py       # MCP server: browser automation, file access, script execution
+google_tasks_mcp.py # MCP server: Google Tasks
+mcp_manager.py      # Web dashboard to start/stop/monitor the MCP servers
+links.json          # saved platform shortcuts (gitignored, created by save_link)
+google_token.json   # Google OAuth refresh token (gitignored, created by --auth)
+requirements.txt    # Python dependencies
 src/
-  cwl.py         # CWL login automation
+  cwl.py            # CWL login automation
 ```
 
 ## Roadmap
