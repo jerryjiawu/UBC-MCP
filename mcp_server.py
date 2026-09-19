@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -74,8 +74,17 @@ _driver = None
 
 def _get_driver():
     global _driver
-    if _driver is None:
-        _driver = get_driver()
+    if _driver is not None:
+        try:
+            _ = _driver.title  # cheap call that fails if Chrome/chromedriver died underneath us
+            return _driver
+        except WebDriverException:
+            try:
+                _driver.quit()
+            except Exception:
+                pass
+            _driver = None
+    _driver = get_driver()
     return _driver
 
 
@@ -99,6 +108,20 @@ def open_url(url: str) -> str:
     driver = _get_driver()
     driver.get(url)
     return f"title={driver.title!r} url={driver.current_url!r}"
+
+
+@mcp.tool()
+def restart_browser() -> str:
+    """Force-quit and recreate the shared browser session (use if browser tools start erroring, e.g. 'connection refused' / dead session)."""
+    global _driver
+    if _driver is not None:
+        try:
+            _driver.quit()
+        except Exception:
+            pass
+        _driver = None
+    driver = _get_driver()
+    return f"restarted browser -> title={driver.title!r} url={driver.current_url!r}"
 
 
 @mcp.tool()

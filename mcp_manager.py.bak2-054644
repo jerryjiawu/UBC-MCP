@@ -142,8 +142,6 @@ INDEX_HTML = r"""<!doctype html>
   .prompt { color: var(--accent); }
   pre.brief { color: var(--fg); margin: 0; white-space: pre-wrap; line-height: 1.35; }
   pre.brief .hot { color: var(--bad); }
-  pre.brief .go  { color: var(--accent); font-weight: bold; }
-  pre.brief .dim { color: var(--dim); }
 </style>
 </head>
 <body>
@@ -199,16 +197,9 @@ async function refreshBrief() {
     const res = await fetch('/api/brief');
     const b = await res.json();
     const el = document.getElementById('brief');
-    // escape first, then decorate -- file contents are never trusted as HTML
-    const esc = t => t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const full = esc(b.text);
-    const cut = full.indexOf('--- reference');
-    let head = cut === -1 ? full : full.slice(0, cut);
-    const tail = cut === -1 ? '' : full.slice(cut);
-    head = head
-      .replace(/^\[!\][^\n]*/gm, m => `<span class="hot">${m}</span>`)
-      .replace(/^&gt;&gt;[^\n]*/gm, m => `<span class="go">${m}</span>`);
-    el.innerHTML = head + (tail ? `<span class="dim">${tail}</span>` : '');
+    el.textContent = b.text;
+    // highlight the [!] alert headings without trusting file contents as HTML
+    el.innerHTML = el.innerHTML.replace(/\[!\][^\n]*/g, m => `<span class="hot">${m}</span>`);
     document.getElementById('briefmeta').textContent =
       b.exists ? `src/context/ubc-brief.txt \u2014 ${b.age}` : 'src/context/ubc-brief.txt \u2014 not written yet';
   } catch (e) { /* leave last good render in place */ }

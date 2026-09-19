@@ -1,60 +1,73 @@
-UBC BRIEF - updated Fri Sep 18  22:35 PDT
+UBC BRIEF — updated Fri Sep 18  22:55 PDT
 
-[!] OVERDUE / UNSUBMITTED
-    nothing overdue. Whole-term Canvas scan: every item past deadline is graded.
-    APSC 160 WS3-WS6 (due tonight 23:59) already graded, full marks.
+>> DO NEXT
+   1. PrairieLearn pre-lab 1      30 min   BLOCKS your quiz Mon 13:00
+   2. Stemble pre-lab, Expt 22    45 min   BLOCKS your lab  Mon 14:00
+   3. APSC 100 week 3 block       75 min   6 items, all due Mon 08:00
+   4. PHYS Reading Quiz Week 3    45 min   due Mon 08:00, wk3 readings
+   5. MATH WW2                    2-3 h    27 problems, none started, due Thu
+   6. APSC 160 Lab 0              30 min   due Mon 23:59
+   7. CHEM Assignment #2          45 min   due Mon 23:59
+   8. Message Mario Kart group    10 min   Gist Notes contract, due Sep 27
 
-[!] HIDDEN PREREQUISITES
-    Stemble pre-lab, Expt 22   gates CHEM 154 in-lab  Mon Sep 21 14:00 Zoom
-    PrairieLearn pre-lab 1     gates APSC 160 lab quiz Mon Sep 21 13:00 ORCA
-    PrairieTest registration   quiz 1 already booked (Mon Sep 21 13:00, BUCH B101).
-                               Next: lab quiz 2 window Sep 28-Oct 3 - register this week.
-    ORCA self-registration     PHYS 157 quiz window is the week of Sep 28 - register
-                               now; nothing on Canvas or any calendar will remind you.
+   Weekend plan: 1-4 Saturday morning, 6-8 Saturday afternoon, 5 Sunday.
+   Nothing is due Sat or Sun — all of this is buying back Monday.
 
-TODAY - Friday Sep 18
-    08:00-09:00  APSC 100   Class B          LIFE 2201
-    09:00-10:00  PHYS 157   lecture          HEBB 100
-    23:59        APSC 160   WS3, WS4, WS5, WS6  - all graded, full marks, nothing to do
+[!] BLOCKERS — no feed will ever remind you
+    PrairieLearn pre-lab 1   -> APSC 160 Lab Quiz 1   Mon Sep 21 13:00  BUCH B101
+    Stemble pre-lab Expt 22  -> CHEM 154 in-lab       Mon Sep 21 14:00  Zoom
+    PrairieTest registration -> Lab Quiz 2, window Sep 28-Oct 3   book this week
+    ORCA self-registration   -> PHYS 157 Quiz 1, week of Sep 28   register this week
+
+[!] OVERDUE
+    nothing overdue
+
+TODAY — Friday Sep 18
+    08:00  APSC 100  Class B   LIFE 2201
+    09:00  PHYS 157  lecture   HEBB 100
+    23:59  APSC 160  WS3-WS6 — all graded, full marks, nothing to do
+
+MONDAY IS THE PILEUP
+    08:00  six items due at once (5x APSC 100 + PHYS reading quiz)
+    10:00  APSC 100 studio, EDC 301
+    13:00  APSC 160 Lab Quiz 1, BUCH B101, 50 min
+    14:00  CHEM 154 lab, Zoom — join within 10 min or marked absent
+    23:59  CHEM Assignment #2, APSC 160 Lab 0
+
+--- reference ----------------------------------------------------------
 
 NEXT 7 DAYS
   Sat Sep 19    --     nothing due
   Sun Sep 20    --     nothing due
-  Mon Sep 21    08:00  APSC 100   Week 3 Video 3 Biomedical  (unsubmitted)
-  Mon Sep 21    08:00  APSC 100   M1-W3-V1 Quiz Stage 2      (unsubmitted)
-  Mon Sep 21    08:00  APSC 100   M1-W3-V2 Quiz Stage 3      (unsubmitted)
-  Mon Sep 21    08:00  APSC 100   Learning-3 Neuroscience    (unsubmitted, bonus)
-  Mon Sep 21    08:00  APSC 100   CAD Software Disclaimer    (unsubmitted)
-  Mon Sep 21    08:00  PHYS 157   Reading Quiz Week 3        (unsubmitted)
-  Mon Sep 21    13:00  APSC 160   Lab Quiz 1  ORCA, BUCH B101, 50 min
-  Mon Sep 21    23:59  CHEM 154   Assignment #2 Periodic Trends/Bonding  (unsubmitted)
-  Mon Sep 21    23:59  APSC 160   Lab 0                      (unsubmitted)
-  Tue Sep 22    12:00  APSC 100   Studio Week 3 Submission   (unsubmitted)
-  Wed Sep 23    23:59  MATH 100   Quiz 1  written in large class 12:00-14:00 IRC 2
-  Wed Sep 23    23:59  APSC 160   WS7                        (unsubmitted)
+  Mon Sep 21    08:00  APSC 100   Week 3 Video 3 Biomedical   unsubmitted
+  Mon Sep 21    08:00  APSC 100   M1-W3-V1 Quiz Stage 2       unsubmitted
+  Mon Sep 21    08:00  APSC 100   M1-W3-V2 Quiz Stage 3       unsubmitted
+  Mon Sep 21    08:00  APSC 100   Learning-3 Neuroscience     unsubmitted, bonus
+  Mon Sep 21    08:00  APSC 100   CAD Software Disclaimer     unsubmitted
+  Mon Sep 21    08:00  PHYS 157   Reading Quiz Week 3         unsubmitted
+  Mon Sep 21    13:00  APSC 160   Lab Quiz 1  ORCA BUCH B101, 50 min
+  Mon Sep 21    23:59  CHEM 154   Assignment #2 Periodic Trends/Bonding
+  Mon Sep 21    23:59  APSC 160   Lab 0
+  Tue Sep 22    12:00  APSC 100   Studio Week 3 Submission
+  Wed Sep 23    12:00  MATH 100   Quiz 1, in large class IRC 2 (cycles 1-2)
+  Wed Sep 23    23:59  APSC 160   WS7
   Thu Sep 24    23:59  MATH 100   WW2  (0/27 attempted)
-  Fri Sep 25    22:00  CHEM lab   Safety Quiz  - done, 10/10
-  Fri Sep 25    23:59  APSC 160   WS8, WS9                   (unsubmitted)
-  Fri Sep 25    23:59  PHYS 157   MP Homework 1              (unsubmitted)
-  Fri Sep 25    23:59  PHYS 157   Written Homework 1         (unsubmitted, no late HW)
-
-  Monday is the pileup: 6 items at 08:00, timed quiz 13:00, Zoom lab 14:00, two more
-  at 23:59, plus two invisible pre-labs. CHEM lab: join within 10 min or marked absent.
+  Fri Sep 25    22:00  CHEM lab   Safety Quiz — done, 10/10
+  Fri Sep 25    23:59  APSC 160   WS8, WS9
+  Fri Sep 25    23:59  PHYS 157   MP Homework 1, Written Homework 1  (no late HW)
+  Sun Sep 27    23:59  WRDS 150   Gist Notes + Group Contract (group: Mario Kart)
 
 STATUS
-    MATH 100 WeBWorK
-      WW2              0%   (0 of 27 attempted)   due Thu Sep 24 23:59
-      WeBWorK Tutorial 0%   (0 of 7)              open until Dec 7
-      WW1              100% (25/25) closed
-      Diagnostic Test  76%  closed; answers unlock Mon Sep 21 23:59.
-                       This is where the cycle 1-2 gaps are - review before Quiz 1.
-      WW3 opens Wed Sep 23 00:01.
+  MATH 100 WeBWorK
+    WW2               0%   0 of 27 attempted     due Thu Sep 24 23:59
+    WeBWorK Tutorial  0%   0 of 7                open until Dec 7
+    WW1             100%   25/25, closed
+    Diagnostic       76%   closed; answers unlock Mon Sep 21 23:59
+                           cycle 1-2 gaps live here — review before Quiz 1 Wed
+    WW3 opens Wed Sep 23 00:01 (slopes, derivatives)
 
-    Looks off: Google Tasks "School Assignments" now holds only 2 items, both
-    personal (Finish student loans, Cancel Staples). Every coursework task is gone -
-    no Canvas or MATH items at all, where ~38 were pending import on Sep 18. Looks
-    like removeOldImportedTasks() ran without syncAssignmentsToTasks() following it.
-    Fix is to run syncAssignmentsToTasks() - it is idempotent. Nothing was added by
-    this brief; the script owns that list.
+  APSC 160  WS1-WS6 all full marks: 60/40/30/20/10/20
 
-    Sources: all read OK - Canvas API, both ICS feeds, Google Tasks, WeBWorK grades.
+  Google Tasks  "School Assignments" verified intact, ~100 items.
+                ~38 feed items still pending import — run syncAssignmentsToTasks().
+                Never add tasks by hand: the script dedupes on calendar event IDs.
