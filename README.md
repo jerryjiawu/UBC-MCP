@@ -11,7 +11,7 @@ Early development. Currently implemented:
 - `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run. Runs headless by default (set `SELENIUM_HEADLESS=0` in `.env` to watch it run in a visible window). Optionally posts a Discord webhook notification the moment a Duo push is sent.
 - `mcp_server.py` — MCP server exposing browser automation, page reading, file access, and (opt-in) script execution as tools for agents.
 - `google_tasks_mcp.py` — separate MCP server exposing Google Tasks (list/create/complete/delete tasks) to agents.
-- `mcp_manager.py` — local web dashboard to start/stop/monitor both MCP servers.
+- `mcp_manager.py` — "MCP Mommy", a local web dashboard + tray icon to start/stop/monitor the MCP servers and the Discord bot.
 - `discord_bot.py` — a Discord bot ("Willow") that answers questions about your UBC status (from `src/context/ubc-brief.txt`) via the Gemini API, replying with formatted embeds.
 - `canvas.py` — placeholder for upcoming Canvas integration.
 
@@ -91,9 +91,9 @@ python google_tasks_mcp.py --auth
 
 This opens a browser for Google's OAuth consent screen and saves a refresh token to `google_token.json` (gitignored). After that, add the server to your MCP client config and it refreshes the token silently.
 
-### MCP Manager (web dashboard)
+### MCP Mommy (web dashboard + tray icon)
 
-`mcp_manager.py` runs a local Flask dashboard to start/stop/restart `mcp_server.py` and `google_tasks_mcp.py` and tail their logs:
+`mcp_manager.py` ("MCP Mommy") runs a local Flask dashboard with a system tray icon to start/stop/restart `mcp_server.py`, `google_tasks_mcp.py`, and `discord_bot.py`, and tail their logs:
 
 ```powershell
 python mcp_manager.py
@@ -101,9 +101,9 @@ python mcp_manager.py
 
 Then open http://127.0.0.1:5055. It binds to `127.0.0.1` only and has **no authentication** — do not expose it on a network interface or add port forwarding, since anyone who can reach it could start/stop/restart these processes.
 
-Note: MCP servers use stdio transport, so a server started from the manager isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). The manager is a process supervisor/log viewer for local development, not an MCP client.
+Note: MCP servers use stdio transport, so a server started from MCP Mommy isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). MCP Mommy is a process supervisor/log viewer for local development, not an MCP client.
 
-**Important limitation:** the manager's `ubc-mcp`/`google-tasks-mcp` processes are a **separate, independent set** from whatever Claude Desktop spawned itself. Its Start/Stop/Restart buttons only affect the manager's own copies — they do **not** restart or otherwise touch the instance Claude Desktop is actually talking to over its own stdio pipes. If the live Claude-connected `ubc-mcp` gets into a bad state (e.g. a dead browser session), restarting it from the dashboard won't fix it; you need to either rely on `restart_browser`/the self-healing driver (see below) or restart Claude Desktop itself so it respawns its own copy.
+**Important limitation:** MCP Mommy's `ubc-mcp`/`google-tasks-mcp` processes are a **separate, independent set** from whatever Claude Desktop spawned itself. Its Start/Stop/Restart buttons only affect its own copies — they do **not** restart or otherwise touch the instance Claude Desktop is actually talking to over its own stdio pipes. If the live Claude-connected `ubc-mcp` gets into a bad state (e.g. a dead browser session), restarting it from the dashboard won't fix it; you need to either rely on `restart_browser`/the self-healing driver (see below) or restart Claude Desktop itself so it respawns its own copy.
 
 ### Discord Bot ("Willow")
 
@@ -131,7 +131,7 @@ Setup:
 canvas.py           # Canvas MCP tools (in progress)
 mcp_server.py       # MCP server: browser automation, file access, script execution
 google_tasks_mcp.py # MCP server: Google Tasks
-mcp_manager.py      # Web dashboard to start/stop/monitor the MCP servers
+mcp_manager.py      # "MCP Mommy": dashboard + tray icon to start/stop/monitor everything below
 discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + UBC brief Q&A
 links.json          # saved platform shortcuts (gitignored, created by save_link)
 google_token.json   # Google OAuth refresh token (gitignored, created by --auth)
