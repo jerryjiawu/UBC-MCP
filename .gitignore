@@ -7,3 +7,4 @@ screenshots/
 __pycache__/
 google_token.json
 gmail_token.json
+.mcp_mommy_pids/

@@ -37,6 +37,13 @@ LOG_LINES = 200
 BRIEF_PATH = os.path.join(PROJECT_ROOT, "src", "context", "ubc-brief.txt")
 FAVICON_PATH = os.path.join(PROJECT_ROOT, "src", "assets", "profile.ico")
 
+# Tracks the PID we last spawned for each managed server, on disk, so that if a
+# previous MCP Mommy process dies uncleanly (crash, force-killed, etc. -- skipping
+# stop()/atexit) we can find and clean up the orphan before starting a fresh one,
+# instead of duplicate instances piling up (e.g. the Discord bot replying twice).
+PIDS_DIR = os.path.join(PROJECT_ROOT, ".mcp_mommy_pids")
+os.makedirs(PIDS_DIR, exist_ok=True)
+
 
 class ManagedServer:
     def __init__(self, name, script_path):
@@ -45,10 +52,48 @@ class ManagedServer:
         self.process = None
         self.logs = deque(maxlen=LOG_LINES)
         self.started_at = None
+        self.pid_file = os.path.join(PIDS_DIR, f"{name}.pid")
+
+    def _kill_tree(self, pid):
+        # /T kills the whole process tree, not just this pid -- some launches on
+        # this system leave a surviving child that plain terminate()/kill() miss.
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(pid)],
+            capture_output=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+
+    def _kill_stale_orphan(self):
+        """If a previous MCP Mommy run left this exact child still alive (its own
+        parent already exited), clean it up before starting a new one. Only ever
+        acts on a PID we ourselves wrote to the pid file, and only after confirming
+        that PID's command line still matches this script -- never touches anything
+        else on the system (e.g. Claude Desktop's own independent instances)."""
+        if not os.path.exists(self.pid_file):
+            return
+        try:
+            with open(self.pid_file) as f:
+                old_pid = int(f.read().strip())
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 f"(Get-CimInstance Win32_Process -Filter 'ProcessId={old_pid}').CommandLine"],
+                capture_output=True, text=True, timeout=5,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            if os.path.basename(self.script_path) in (result.stdout or ""):
+                self._kill_tree(old_pid)
+        except Exception:
+            pass
+        finally:
+            try:
+                os.remove(self.pid_file)
+            except OSError:
+                pass
 
     def start(self):
         if self.is_running():
             return
+        self._kill_stale_orphan()
         self.process = subprocess.Popen(
             [PYTHON, self.script_path],
             cwd=PROJECT_ROOT,
@@ -64,6 +109,8 @@ class ManagedServer:
             # would otherwise pop up its own blank terminal window on Windows
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
+        with open(self.pid_file, "w") as f:
+            f.write(str(self.process.pid))
         self.started_at = time.time()
         threading.Thread(target=self._read_logs, daemon=True).start()
 
@@ -76,13 +123,17 @@ class ManagedServer:
 
     def stop(self):
         if self.process and self.process.poll() is None:
-            self.process.terminate()
+            self._kill_tree(self.process.pid)
             try:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.process.kill()
+                pass
         self.process = None
         self.started_at = None
+        try:
+            os.remove(self.pid_file)
+        except OSError:
+            pass
 
     def is_running(self):
         return self.process is not None and self.process.poll() is None
@@ -305,6 +356,14 @@ def api_restart(name):
     managed[name].stop()
     managed[name].start()
     return jsonify(managed[name].status())
+
+
+@app.route("/api/quit", methods=["POST"])
+def api_quit():
+    # graceful shutdown -- stops every managed child (and cleans up their pid
+    # files) before exiting, unlike force-killing this process from outside
+    threading.Thread(target=lambda: (_stop_all(), os._exit(0)), daemon=True).start()
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
