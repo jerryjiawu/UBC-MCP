@@ -10,9 +10,12 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from collections import deque
 
 from flask import Flask, jsonify
+from PIL import Image, ImageDraw
+import pystray
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -224,4 +227,35 @@ if __name__ == "__main__":
     for srv in managed.values():
         srv.start()
     port = int(os.getenv("MCP_MANAGER_PORT", "5055"))
-    app.run(host="127.0.0.1", port=port, debug=False)
+    url = f"http://127.0.0.1:{port}"
+
+    threading.Thread(
+        target=lambda: app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False),
+        daemon=True,
+    ).start()
+
+    def _tray_icon_image():
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse((2, 2, 61, 61), fill=(218, 119, 86, 255))
+        draw.text((20, 18), "M", fill=(12, 12, 12, 255))
+        return img
+
+    def _on_open(icon, item):
+        webbrowser.open(url)
+
+    def _on_quit(icon, item):
+        icon.stop()
+        _stop_all()
+        os._exit(0)
+
+    tray = pystray.Icon(
+        "mcp-manager",
+        icon=_tray_icon_image(),
+        title="MCP Manager",
+        menu=pystray.Menu(
+            pystray.MenuItem("Open Dashboard", _on_open, default=True),
+            pystray.MenuItem("Quit", _on_quit),
+        ),
+    )
+    tray.run()

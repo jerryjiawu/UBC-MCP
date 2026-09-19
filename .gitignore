@@ -1,6 +1,7 @@
 .env
 .venv
 .chrome_profile
+.chrome_profile_simtest
 links.json
 screenshots/
 __pycache__/
