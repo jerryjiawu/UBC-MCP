@@ -11,6 +11,7 @@ Early development. Currently implemented:
 - `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run. Runs headless by default (set `SELENIUM_HEADLESS=0` in `.env` to watch it run in a visible window). Optionally posts a Discord webhook notification the moment a Duo push is sent.
 - `mcp_server.py` — MCP server exposing browser automation, page reading, file access, and (opt-in) script execution as tools for agents.
 - `google_tasks_mcp.py` — separate MCP server exposing Google Tasks (list/create/complete/delete tasks) to agents.
+- `gmail_mcp.py` — separate MCP server exposing read-only Gmail access, restricted to a fixed sender allowlist (`ALLOWED_SENDERS` in the file).
 - `mcp_manager.py` — "MCP Mommy", a local web dashboard + tray icon to start/stop/monitor the MCP servers and the Discord bot.
 - `discord_bot.py` — a Discord bot ("Willow") that answers questions about your UBC status (from `src/context/ubc-brief.txt`) via the Gemini API, replying with formatted embeds.
 - `canvas.py` — placeholder for upcoming Canvas integration.
@@ -91,9 +92,26 @@ python google_tasks_mcp.py --auth
 
 This opens a browser for Google's OAuth consent screen and saves a refresh token to `google_token.json` (gitignored). After that, add the server to your MCP client config and it refreshes the token silently.
 
+### Gmail MCP Server (read-only, sender-restricted)
+
+`gmail_mcp.py` is a separate MCP server (stdio transport) exposing **read-only** Gmail access: `list_allowed_senders`, `list_emails`, `read_email`.
+
+It's restricted in two independent ways:
+
+1. **OAuth scope** is `gmail.readonly` — there's no send/modify/delete permission at the Google API level at all, regardless of what the code does.
+2. **Sender allowlist** — `ALLOWED_SENDERS` in `gmail_mcp.py` (currently `rover.ubc@gmail.com`, `notifications@instructure.com`, `financial.support@askme.ubc.ca`) is baked into every query, and `read_email` re-checks the sender on the fetched message before returning its body. The agent can never see your general inbox, only mail from these specific addresses. Edit `ALLOWED_SENDERS` directly in the file to change the list.
+
+Setup (uses the same Google Cloud OAuth client as Google Tasks — enable the **Gmail API** for it too):
+
+```powershell
+python gmail_mcp.py --auth
+```
+
+This saves a separate refresh token to `gmail_token.json` (gitignored, scoped only to `gmail.readonly`).
+
 ### MCP Mommy (web dashboard + tray icon)
 
-`mcp_manager.py` ("MCP Mommy") runs a local Flask dashboard with a system tray icon to start/stop/restart `mcp_server.py`, `google_tasks_mcp.py`, and `discord_bot.py`, and tail their logs:
+`mcp_manager.py` ("MCP Mommy") runs a local Flask dashboard with a system tray icon to start/stop/restart `mcp_server.py`, `google_tasks_mcp.py`, `gmail_mcp.py`, and `discord_bot.py`, and tail their logs:
 
 ```powershell
 python mcp_manager.py
@@ -131,10 +149,12 @@ Setup:
 canvas.py           # Canvas MCP tools (in progress)
 mcp_server.py       # MCP server: browser automation, file access, script execution
 google_tasks_mcp.py # MCP server: Google Tasks
+gmail_mcp.py        # MCP server: read-only Gmail, restricted to ALLOWED_SENDERS
 mcp_manager.py      # "MCP Mommy": dashboard + tray icon to start/stop/monitor everything below
 discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + UBC brief Q&A
 links.json          # saved platform shortcuts (gitignored, created by save_link)
-google_token.json   # Google OAuth refresh token (gitignored, created by --auth)
+google_token.json   # Google Tasks OAuth refresh token (gitignored, created by --auth)
+gmail_token.json    # Gmail OAuth refresh token (gitignored, created by --auth)
 requirements.txt    # Python dependencies
 src/
   cwl.py            # CWL login automation

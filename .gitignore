@@ -6,3 +6,4 @@ links.json
 screenshots/
 __pycache__/
 google_token.json
+gmail_token.json

@@ -26,6 +26,7 @@ PYTHON = _venv_python if os.path.exists(_venv_python) else sys.executable
 SERVERS = {
     "ubc-mcp": os.path.join(PROJECT_ROOT, "mcp_server.py"),
     "google-tasks-mcp": os.path.join(PROJECT_ROOT, "google_tasks_mcp.py"),
+    "gmail-mcp": os.path.join(PROJECT_ROOT, "gmail_mcp.py"),
     "discord-bot": os.path.join(PROJECT_ROOT, "discord_bot.py"),
 }
 
