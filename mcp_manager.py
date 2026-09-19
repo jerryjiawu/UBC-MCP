@@ -120,26 +120,41 @@ INDEX_HTML = r"""<!doctype html>
     --rule: #3a3a3a;
   }
   * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* old Edge/IE */
+  }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; } /* Chrome/Safari */
   body {
     font-family: ui-monospace, Consolas, monospace;
     background: var(--bg);
     color: var(--fg);
-    margin: 0;
-    padding: 2rem;
     font-size: 14px;
   }
-  pre.banner { color: var(--accent); margin: 0 0 1.5rem 0; line-height: 1.15; }
-  .rule { color: var(--rule); white-space: pre; margin: 0; }
+  .page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 1.5rem 2rem;
+  }
+  pre.banner { color: var(--accent); margin: 0 0 1rem 0; line-height: 1.15; flex: 0 0 auto; }
+  .rule { color: var(--rule); white-space: pre; margin: 0.5rem 0; flex: 0 0 auto; }
+  #servers { flex: 0 0 auto; }
   .server { padding: 0.6rem 0; border-bottom: 1px dashed var(--rule); }
   .server:last-child { border-bottom: none; }
   .row { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
   .name { color: var(--fg); font-weight: bold; min-width: 18ch; }
   .tag.running { color: var(--ok); }
   .tag.stopped { color: var(--bad); }
-  .meta { color: var(--dim); }
+  .meta { color: var(--dim); margin: 0.5rem 0; flex: 0 0 auto; }
   .cmds a { color: var(--dim); text-decoration: none; cursor: pointer; margin-right: 1rem; }
   .cmds a:hover { color: var(--accent); text-decoration: underline; }
   .prompt { color: var(--accent); }
+  .brief-wrap { flex: 1 1 auto; }
   pre.brief { color: var(--fg); margin: 0; white-space: pre-wrap; line-height: 1.35; }
   pre.brief .hot { color: var(--bad); }
   pre.brief .go  { color: var(--accent); font-weight: bold; }
@@ -147,6 +162,7 @@ INDEX_HTML = r"""<!doctype html>
 </style>
 </head>
 <body>
+<div class="page">
 <pre class="banner"> __  __  ____ ____    __  __    _    _   _    _    ____ _____ ____
 |  \/  |/ ___|  _ \  |  \/  |  / \  | \ | |  / \  / ___| ____|  _ \
 | |\/| | |   | |_) | | |\/| | / _ \ |  \| | / _ \| |  _|  _| | |_) |
@@ -157,8 +173,9 @@ INDEX_HTML = r"""<!doctype html>
 <p class="rule">------------------------------------------------------------------------</p>
 <p class="meta"><span class="prompt">$</span> polling every 2s, 127.0.0.1 only, no auth</p>
 <p class="rule">------------------------------------------------------------------------</p>
-<pre class="brief" id="brief">loading brief...</pre>
+<div class="brief-wrap"><pre class="brief" id="brief">loading brief...</pre></div>
 <p class="meta"><span class="prompt">$</span> <span id="briefmeta">src/context/ubc-brief.txt</span></p>
+</div>
 <script>
 async function act(name, action) {
   await fetch(`/api/${name}/${action}`, { method: 'POST' });
