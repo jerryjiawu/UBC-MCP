@@ -13,3 +13,4 @@ google-genai
 tzdata
 sentence-transformers
 numpy
+watchdog

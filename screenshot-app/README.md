@@ -74,20 +74,38 @@ Copy-Item .env.example .env
 notepad .env   # fill in SERVER_URL (your app's URL) and API_SECRET
 ```
 
+`SCREENSHOT_DIR` can be left blank — it auto-detects both the OneDrive-redirected
+Pictures folder and the plain default, so it works whether or not OneDrive is
+managing your Pictures folder.
+
 Test it manually:
 
 ```powershell
 .venv\Scripts\python uploader.py
 ```
 
-Take a screenshot with **Win+PrtScn** (saves automatically to
-`Pictures\Screenshots`) and confirm you see an `[uploaded]` line in the
-console. Press Ctrl+C to stop.
+It uses filesystem events (not polling), so a screenshot taken with
+**Win+PrtScn** is uploaded within about a second — watch for an `[uploaded]`
+line in the console. Press Ctrl+C to stop.
 
-### Run it automatically in the background
+### Running it inside this project (recommended if you use mcp_manager.py)
 
-Either double-click `run_uploader.bat` whenever you want it running, or set
-it to start automatically at login:
+This project's `mcp_manager.py` already manages its other background
+services (Discord bot, MCP servers, etc.) from one dashboard/tray icon, and
+the uploader is registered there too as `screenshot-uploader`. Just run:
+
+```powershell
+python mcp_manager.py
+```
+
+and it starts/stops/restarts alongside everything else from the dashboard
+at `http://127.0.0.1:5055` (or the tray icon) — no separate setup needed.
+
+### Running it standalone instead
+
+If you'd rather not use mcp_manager.py, either double-click
+`run_uploader.bat` whenever you want it running, or set it to start
+automatically at login:
 
 ```powershell
 cd "c:\Users\itsro\OneDrive\Documents\UBC MCP\screenshot-app\windows-uploader"

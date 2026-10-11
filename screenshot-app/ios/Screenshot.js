@@ -20,9 +20,25 @@ const API_KEY = "replace-with-the-same-secret-you-set-on-the-server"; // <-- EDI
 async function fetchScreenshot() {
   const req = new Request(`${SERVER_URL}/screenshot`);
   req.headers = { "X-API-Key": API_KEY };
-  const image = await req.loadImage();
-  if (req.response.statusCode !== 200) {
-    throw new Error(`Server returned status ${req.response.statusCode}`);
+  // Use raw load() instead of loadImage() so a non-image error response
+  // (401/404/500 HTML page) doesn't throw an opaque "Cannot parse response
+  // to an image" error before we get a chance to show what's actually wrong.
+  const data = await req.load();
+  const status = req.response.statusCode;
+
+  if (status === 401) {
+    throw new Error("Invalid API key — check that API_KEY here matches API_SECRET on the server.");
+  }
+  if (status === 404) {
+    throw new Error("No screenshot has been uploaded yet. Take a screenshot on your PC (Win+PrtScn), make sure the windows-uploader is running, then try again.");
+  }
+  if (status !== 200) {
+    throw new Error(`Server returned status ${status}.`);
+  }
+
+  const image = Image.fromData(data);
+  if (!image) {
+    throw new Error("Server responded with 200 but the data wasn't a valid image.");
   }
   return image;
 }

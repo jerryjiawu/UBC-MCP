@@ -147,19 +147,17 @@ Then open http://127.0.0.1:5056/health. It binds to `127.0.0.1` only, same secur
 
 ### Discord Bot ("Willow")
 
-`discord_bot.py` is a standalone Discord bot with three jobs:
+`discord_bot.py` is a standalone Discord bot with two jobs:
 
 1. **Duo push notifications** — handled by `src/cwl.py` directly via a Discord webhook (`DISCORD_DUO_WEBHOOK_URL`), independent of whether the bot process is running. The moment a CWL login redirects to Duo, a message is posted so you know to check your phone.
 2. **Chat about your UBC status** — DM the bot or @mention it in a server, and it retrieves the most relevant chunks from the local RAG server (see above) for your specific question and answers via the Gemini API, replying with a soft-pink embed and a warm, calming tone.
-3. **Screenshot DMs** — independently enabled or disabled from the MCP Mommy dashboard, using the existing Discord bot connection. It watches the Windows `Pictures\Screenshots` folder (including OneDrive Pictures, when present) and the project's `screenshots` folder. Each new PNG or JPEG is sent to the bot owner's DM with a mention. Enabled by default; existing images are not sent when the bot starts. Set `SCREENSHOT_DIR` in `.env` if Windows saves screenshots somewhere else.
 
 Setup:
 
 1. Create a Discord bot at the [Discord Developer Portal](https://discord.com/developers/applications), enable the **Message Content** intent, invite it to your server (or just DM it), and add its token to `.env` as `DISCORD_BOT_TOKEN`.
 2. Create a webhook on a channel you want Duo notifications posted to (channel settings → Integrations → Webhooks) and add the URL to `.env` as `DISCORD_DUO_WEBHOOK_URL`.
 3. Add your [Gemini API key](https://aistudio.google.com/apikey) to `.env` as `GEMINI_API_KEY`.
-4. (Optional) Set `SCREENSHOT_DIR` to the folder where Windows saves screenshots if it differs from `Pictures\Screenshots`.
-5. Run it:
+4. Run it:
 
    ```powershell
    python discord_bot.py
