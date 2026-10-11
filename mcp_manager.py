@@ -14,7 +14,7 @@ import time
 import webbrowser
 from collections import deque
 
-from flask import Flask, jsonify, send_file
+from flask import Flask, jsonify, render_template, send_file
 from PIL import Image, ImageDraw
 import pystray
 
@@ -163,145 +163,9 @@ def _stop_all():
 
 app = Flask(__name__)
 
-INDEX_HTML = r"""<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>mcp-mommy</title>
-<link rel="icon" href="/favicon.ico">
-<style>
-  :root {
-    --bg: #0c0c0c;
-    --fg: #d9d6cf;
-    --dim: #6f6b64;
-    --accent: #da7756;
-    --ok: #7ec699;
-    --bad: #e0685c;
-    --rule: #3a3a3a;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    height: 100%;
-    margin: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: none;      /* Firefox */
-    -ms-overflow-style: none;   /* old Edge/IE */
-  }
-  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-  body {
-    font-family: ui-monospace, Consolas, monospace;
-    background: var(--bg);
-    color: var(--fg);
-    font-size: 14px;
-  }
-  .page {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    padding: 1.5rem 2rem;
-  }
-  .title-row { display: flex; align-items: center; gap: 0.7rem; margin: 0 0 1rem 0; flex: 0 0 auto; }
-  .title-row img { width: 32px; height: 32px; }
-  .title-row span { color: var(--accent); font-size: 1.3rem; font-weight: bold; letter-spacing: 0.12em; }
-  .rule { color: var(--rule); white-space: pre; margin: 0.5rem 0; flex: 0 0 auto; }
-  #servers { flex: 0 0 auto; }
-  .server { padding: 0.6rem 0; border-bottom: 1px dashed var(--rule); }
-  .server:last-child { border-bottom: none; }
-  .row { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
-  .name { color: var(--fg); font-weight: bold; min-width: 18ch; }
-  .tag.running { color: var(--ok); }
-  .tag.stopped { color: var(--bad); }
-  .meta { color: var(--dim); margin: 0.5rem 0; flex: 0 0 auto; }
-  .cmds a { color: var(--dim); text-decoration: none; cursor: pointer; margin-right: 1rem; }
-  .cmds a:hover { color: var(--accent); text-decoration: underline; }
-  .prompt { color: var(--accent); }
-  .brief-wrap { flex: 1 1 auto; }
-  pre.brief { color: var(--fg); margin: 0; white-space: pre-wrap; line-height: 1.35; }
-  pre.brief .hot { color: var(--bad); }
-  pre.brief .go  { color: var(--accent); font-weight: bold; }
-  pre.brief .dim { color: var(--dim); }
-</style>
-</head>
-<body>
-<div class="page">
-<div class="title-row"><img src="/favicon.ico" alt=""><span>MCP MOMMY</span></div>
-<p class="rule">------------------------------------------------------------------------</p>
-<div id="servers"></div>
-<p class="rule">------------------------------------------------------------------------</p>
-<p class="meta"><span class="prompt">$</span> polling every 2s, 127.0.0.1 only, no auth</p>
-<p class="rule">------------------------------------------------------------------------</p>
-<div class="brief-wrap"><pre class="brief" id="brief">loading brief...</pre></div>
-<p class="meta"><span class="prompt">$</span> <span id="briefmeta">src/context/ubc-brief.txt</span></p>
-</div>
-<script>
-async function act(name, action) {
-  await fetch(`/api/${name}/${action}`, { method: 'POST' });
-  refresh();
-}
-
-function render(data) {
-  const root = document.getElementById('servers');
-  root.innerHTML = '';
-  for (const name in data) {
-    const s = data[name];
-    const div = document.createElement('div');
-    div.className = 'server';
-    const tag = s.running ? 'running' : 'stopped';
-    const label = s.running ? `RUNNING pid=${s.pid} up=${s.uptime}s` : 'STOPPED';
-    div.innerHTML = `
-      <div class="row">
-        <span class="name">${name}</span>
-        <span class="tag ${tag}">[ ${label} ]</span>
-      </div>
-      <div class="row cmds">
-        <a onclick="act('${name}','start')">start</a>
-        <a onclick="act('${name}','stop')">stop</a>
-        <a onclick="act('${name}','restart')">restart</a>
-      </div>
-    `;
-    root.appendChild(div);
-  }
-}
-
-async function refresh() {
-  const res = await fetch('/api/status');
-  render(await res.json());
-}
-
-async function refreshBrief() {
-  try {
-    const res = await fetch('/api/brief');
-    const b = await res.json();
-    const el = document.getElementById('brief');
-    // escape first, then decorate -- file contents are never trusted as HTML
-    const esc = t => t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const full = esc(b.text);
-    const cut = full.indexOf('--- reference');
-    let head = cut === -1 ? full : full.slice(0, cut);
-    const tail = cut === -1 ? '' : full.slice(cut);
-    head = head
-      .replace(/^\[!\][^\n]*/gm, m => `<span class="hot">${m}</span>`)
-      .replace(/^&gt;&gt;[^\n]*/gm, m => `<span class="go">${m}</span>`);
-    el.innerHTML = head + (tail ? `<span class="dim">${tail}</span>` : '');
-    document.getElementById('briefmeta').textContent =
-      b.exists ? `src/context/ubc-brief.txt \u2014 ${b.age}` : 'src/context/ubc-brief.txt \u2014 not written yet';
-  } catch (e) { /* leave last good render in place */ }
-}
-
-refresh();
-refreshBrief();
-setInterval(refresh, 2000);
-setInterval(refreshBrief, 30000);
-</script>
-</body>
-</html>
-"""
-
-
 @app.route("/")
 def index():
-    return INDEX_HTML
+    return render_template("mcp_manager.html")
 
 
 @app.route("/favicon.ico")
