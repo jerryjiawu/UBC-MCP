@@ -129,21 +129,25 @@ def restart_browser() -> str:
 @mcp.tool()
 def authenticate(url: str) -> str:
     """Navigate to a UBC CWL-protected page and log in automatically if a login form is shown."""
+    global _driver
     driver = _get_driver()
-    CWL_login(driver, url)
+    driver = CWL_login(driver, url)
+    _driver = driver
     return f"title={driver.title!r} url={driver.current_url!r}"
 
 
 @mcp.tool()
 def open_platform(name: str) -> str:
     """Open a known platform or saved link by short name (webwork, canvas, brightspace, stemble, or anything added via save_link), authenticating via CWL if needed."""
+    global _driver
     key = name.lower().strip()
     url = PLATFORMS.get(key) or _load_links().get(key)
     if not url:
         known = sorted(set(PLATFORMS) | set(_load_links()))
         return f"error: unknown platform/link {name!r}. Known: {', '.join(known)}"
     driver = _get_driver()
-    CWL_login(driver, url)
+    driver = CWL_login(driver, url)
+    _driver = driver
     return f"title={driver.title!r} url={driver.current_url!r}"
 
 

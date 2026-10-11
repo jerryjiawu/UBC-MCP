@@ -27,6 +27,7 @@ SERVERS = {
     "ubc-mcp": os.path.join(PROJECT_ROOT, "mcp_server.py"),
     "google-tasks-mcp": os.path.join(PROJECT_ROOT, "google_tasks_mcp.py"),
     "gmail-mcp": os.path.join(PROJECT_ROOT, "gmail_mcp.py"),
+    "rag-server": os.path.join(PROJECT_ROOT, "rag_server.py"),
     "discord-bot": os.path.join(PROJECT_ROOT, "discord_bot.py"),
 }
 
@@ -43,6 +44,7 @@ FAVICON_PATH = os.path.join(PROJECT_ROOT, "src", "assets", "profile.ico")
 # instead of duplicate instances piling up (e.g. the Discord bot replying twice).
 PIDS_DIR = os.path.join(PROJECT_ROOT, ".mcp_mommy_pids")
 os.makedirs(PIDS_DIR, exist_ok=True)
+SCREENSHOT_DMS_DISABLED_FILE = os.path.join(PIDS_DIR, "screenshot-dms.disabled")
 
 
 class ManagedServer:
@@ -211,6 +213,9 @@ INDEX_HTML = r"""<!doctype html>
   .meta { color: var(--dim); margin: 0.5rem 0; flex: 0 0 auto; }
   .cmds a { color: var(--dim); text-decoration: none; cursor: pointer; margin-right: 1rem; }
   .cmds a:hover { color: var(--accent); text-decoration: underline; }
+  .toggle { color: var(--dim); background: transparent; border: 1px solid var(--dim); padding: 0.15rem 0.55rem; cursor: pointer; font: inherit; }
+  .toggle.on { color: var(--ok); border-color: var(--ok); }
+  .toggle:hover { color: var(--accent); border-color: var(--accent); }
   .prompt { color: var(--accent); }
   .brief-wrap { flex: 1 1 auto; }
   pre.brief { color: var(--fg); margin: 0; white-space: pre-wrap; line-height: 1.35; }
@@ -245,6 +250,21 @@ function render(data) {
     div.className = 'server';
     const tag = s.running ? 'running' : 'stopped';
     const label = s.running ? `RUNNING pid=${s.pid} up=${s.uptime}s` : 'STOPPED';
+    if (name === 'screenshot-dms') {
+      div.innerHTML = `
+        <div class="row">
+          <span class="name">Screenshot DMs</span>
+          <span class="tag ${tag}">[ ${s.running ? 'ENABLED' : 'DISABLED'} ]</span>
+          <button class="toggle ${s.running ? 'on' : ''}" type="button" role="switch"
+             aria-checked="${s.running}" aria-label="Screenshot DMs"
+             onclick="act('${name}','${s.running ? 'stop' : 'start'}')">
+            ${s.running ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      `;
+      root.appendChild(div);
+      continue;
+    }
     div.innerHTML = `
       <div class="row">
         <span class="name">${name}</span>
@@ -330,11 +350,31 @@ def api_brief():
 
 @app.route("/api/status")
 def api_status():
-    return jsonify({name: srv.status() for name, srv in managed.items()})
+    status = {name: srv.status() for name, srv in managed.items()}
+    status["screenshot-dms"] = {
+        "name": "screenshot-dms",
+        "running": not os.path.exists(SCREENSHOT_DMS_DISABLED_FILE),
+        "pid": None,
+        "uptime": 0,
+        "logs": [],
+    }
+    return jsonify(status)
 
 
 @app.route("/api/<name>/start", methods=["POST"])
 def api_start(name):
+    if name == "screenshot-dms":
+        try:
+            os.remove(SCREENSHOT_DMS_DISABLED_FILE)
+        except FileNotFoundError:
+            pass
+        return jsonify({
+            "name": name,
+            "running": True,
+            "pid": None,
+            "uptime": 0,
+            "logs": [],
+        })
     if name not in managed:
         return jsonify({"error": "unknown server"}), 404
     managed[name].start()
@@ -343,6 +383,16 @@ def api_start(name):
 
 @app.route("/api/<name>/stop", methods=["POST"])
 def api_stop(name):
+    if name == "screenshot-dms":
+        with open(SCREENSHOT_DMS_DISABLED_FILE, "w", encoding="utf-8"):
+            pass
+        return jsonify({
+            "name": name,
+            "running": False,
+            "pid": None,
+            "uptime": 0,
+            "logs": [],
+        })
     if name not in managed:
         return jsonify({"error": "unknown server"}), 404
     managed[name].stop()
@@ -351,6 +401,18 @@ def api_stop(name):
 
 @app.route("/api/<name>/restart", methods=["POST"])
 def api_restart(name):
+    if name == "screenshot-dms":
+        try:
+            os.remove(SCREENSHOT_DMS_DISABLED_FILE)
+        except FileNotFoundError:
+            pass
+        return jsonify({
+            "name": name,
+            "running": True,
+            "pid": None,
+            "uptime": 0,
+            "logs": [],
+        })
     if name not in managed:
         return jsonify({"error": "unknown server"}), 404
     managed[name].stop()
