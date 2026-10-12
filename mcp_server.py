@@ -24,7 +24,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
-from cwl import CWL_login, get_driver  # noqa: E402
+from cwl import CWL_login, bring_to_front, default_headless, get_driver, relaunch  # noqa: E402
 
 load_dotenv()
 
@@ -82,6 +82,10 @@ _MUTATION_PATTERN = re.compile(
 mcp = FastMCP("ubc-mcp")
 
 _driver = None
+# Browser visibility for this whole server run: hidden (headless) by default,
+# flipped by set_browser_visible(). Every (re)launch, including crash recovery
+# and restart_browser(), uses this mode.
+_headless = default_headless()
 
 
 def _get_driver():
@@ -98,7 +102,7 @@ def _get_driver():
             except Exception:
                 pass
             _driver = None
-    _driver = get_driver()
+    _driver = get_driver(headless=_headless)
     return _driver
 
 
@@ -136,6 +140,49 @@ def restart_browser() -> str:
         _driver = None
     driver = _get_driver()
     return f"restarted browser -> title={driver.title!r} url={driver.current_url!r}"
+
+
+@mcp.tool()
+def set_browser_visible(visible: bool, reason: str = "") -> str:
+    """Show or hide the shared browser window. It runs hidden (headless) by default.
+
+    Set visible=True ONLY when the user has to do something in the browser themselves --
+    e.g. a CAPTCHA, a 2FA/Duo screen that needs a choice, a login or consent page that
+    can't be automated, or the user explicitly asks to see the page. Pass a short
+    'reason' and tell the user exactly what to do in the window. Once they're done,
+    call set_browser_visible(visible=False) to hide it again; don't leave it visible
+    for routine browsing. (CWL Duo prompts are already shown and re-hidden
+    automatically by authenticate/open_platform.)
+
+    Switching restarts Chrome: open tabs, the active tab and all cookies/logins are
+    kept, but unsaved form input and in-page state are lost. The choice applies to
+    every later browser launch until changed.
+    """
+    global _driver, _headless
+    want_headless = not visible
+    label = "visible" if visible else "hidden"
+    _headless = want_headless
+
+    driver = _driver
+    alive = False
+    if driver is not None:
+        try:
+            _ = driver.title
+            alive = True
+        except Exception:
+            alive = False
+
+    if alive and getattr(driver, "_mcp_headless", None) == want_headless:
+        if visible:
+            bring_to_front(driver)
+        return f"browser already {label}; url={driver.current_url!r}"
+
+    if alive:
+        _driver = relaunch(driver, headless=want_headless)
+    else:
+        _driver = get_driver(headless=want_headless)
+    suffix = f" (reason: {reason})" if reason else ""
+    return f"browser is now {label}{suffix}; title={_driver.title!r} url={_driver.current_url!r}"
 
 
 @mcp.tool()

@@ -8,7 +8,7 @@ A suite of MCP (Model Context Protocol) tools for platforms used by UBC professo
 
 Early development. Currently implemented:
 
-- `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run. Runs headless by default (set `SELENIUM_HEADLESS=0` in `.env` to always watch it run in a visible window). Posts a Discord webhook notification the moment a Duo push is sent, and if Duo needs a manual step (e.g. "remember this device", picking a verification method), it automatically un-hides the browser at that exact point so you can finish it yourself.
+- `src/cwl.py` — automates CWL (Campus-Wide Login) authentication via Selenium, with a persistent Chrome profile so Duo push isn't required on every run. Runs hidden (headless) by default (set `SELENIUM_HEADLESS=0` in `.env` to start visible instead). Posts a Discord webhook notification the moment a Duo push is sent, and if Duo needs a manual step (e.g. "remember this device", picking a verification method), it automatically shows the browser at that exact point so you can finish it yourself, then hides it again once Duo is done. The AI can also show/hide the browser itself with the `set_browser_visible` MCP tool when it decides you need to step in (a CAPTCHA, a page it can't automate, or you ask to see it). Switching restarts Chrome but keeps open tabs and logins (including session cookies); unsaved form input is lost.
 - `mcp_server.py` — MCP server exposing browser automation, page reading, file access, and (opt-in) script execution as tools for agents.
 - `google_tasks_mcp.py` — separate MCP server exposing Google Tasks (list/create/complete/delete tasks) to agents.
 - `gmail_mcp.py` — separate MCP server exposing read-only Gmail access, restricted to a fixed sender allowlist (`ALLOWED_SENDERS` in the file).
@@ -124,6 +124,8 @@ Then open http://127.0.0.1:5055. It binds to `127.0.0.1` only and has **no authe
 
 The responsive dashboard keeps services in a single row-by-row list, with running/stopped totals, individual service controls, PID and uptime, and expandable recent logs (the latest 50 lines). Status refreshes every 2 seconds without closing logs or replacing focused controls. The daily UBC brief refreshes every 30 seconds, with its reference section expandable. Connection and action failures are displayed on the page; controls are disabled while disconnected or while an action is pending. Its copper-and-charcoal layout is in `templates/mcp_manager.html`, and the dashboard logo uses the existing `src/assets/profile.ico`.
 
+**Auto-open in Claude:** while MCP Mommy runs, it watches for the Claude desktop app being launched (`claude_autopen.py`). The first time a newly started Claude's window appears, it waits ~6 seconds for the app to load, brings the window to the front, presses **Ctrl+Shift+B**, types `http://127.0.0.1:5055` and presses Enter. It only types while the Claude window is the active window; if you click elsewhere midway, it stops rather than typing into another app. A Claude that was already running when MCP Mommy started is left alone. Set `CLAUDE_AUTOPEN_DASHBOARD=0` in the environment to turn it off; `CLAUDE_AUTOPEN_READY_DELAY` / `CLAUDE_AUTOPEN_SHORTCUT_DELAY` (seconds) tune the waits if your machine is slower. See what it did at http://127.0.0.1:5055/api/claude-autopen.
+
 Note: MCP servers use stdio transport, so a server started from MCP Mommy isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). MCP Mommy is a process supervisor/log viewer for local development, not an MCP client.
 
 **Important limitation:** MCP Mommy's `ubc-mcp`/`google-tasks-mcp` processes are a **separate, independent set** from whatever Claude Desktop spawned itself. Its Start/Stop/Restart buttons only affect its own copies — they do **not** restart or otherwise touch the instance Claude Desktop is actually talking to over its own stdio pipes. If the live Claude-connected `ubc-mcp` gets into a bad state (e.g. a dead browser session), restarting it from the dashboard won't fix it; you need to either rely on `restart_browser`/the self-healing driver (see below) or restart Claude Desktop itself so it respawns its own copy.
@@ -178,6 +180,7 @@ google_tasks_mcp.py # MCP server: Google Tasks
 gmail_mcp.py        # MCP server: read-only Gmail, restricted to ALLOWED_SENDERS
 rag_server.py       # Local RAG server: retrieval over src/context/ for discord_bot.py
 mcp_manager.py      # "MCP Mommy": dashboard + tray icon to start/stop/monitor everything below
+claude_autopen.py   # used by mcp_manager.py: opens the dashboard in Claude when Claude launches
 discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + RAG-backed UBC status Q&A
 links.json          # saved platform shortcuts (gitignored, created by save_link)
 mcp-files/          # files downloaded via download_file (gitignored, e.g. a Canvas syllabus)

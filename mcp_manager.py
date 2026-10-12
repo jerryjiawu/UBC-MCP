@@ -18,6 +18,8 @@ from flask import Flask, jsonify, render_template, send_file
 from PIL import Image, ImageDraw
 import pystray
 
+import claude_autopen
+
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 _venv_python = os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe")
@@ -201,6 +203,12 @@ def api_status():
     return jsonify({name: srv.status() for name, srv in managed.items()})
 
 
+@app.route("/api/claude-autopen")
+def api_claude_autopen():
+    # what the Claude-launch watcher has done (see claude_autopen.py)
+    return jsonify({"logs": list(claude_autopen.log_lines)})
+
+
 @app.route("/api/<name>/start", methods=["POST"])
 def api_start(name):
     if name not in managed:
@@ -244,6 +252,9 @@ if __name__ == "__main__":
         target=lambda: app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False),
         daemon=True,
     ).start()
+
+    # open the dashboard inside Claude whenever the Claude app is launched
+    claude_autopen.start(url)
 
     def _tray_icon_image():
         if os.path.exists(FAVICON_PATH):

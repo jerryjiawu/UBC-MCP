@@ -41,16 +41,18 @@ def _kill_orphaned_chromedriver():
         pass
 
 
+def default_headless():
+    """Headless unless SELENIUM_HEADLESS=0. Duo push approval happens on the phone,
+    not in the browser window, so hidden is safe by default; the window is shown
+    only when a person actually needs to act in it (see relaunch())."""
+    return os.getenv("SELENIUM_HEADLESS", "1") != "0"
+
+
 def get_driver(profile_dir=None, headless=None):
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
 
-    # Duo push approval happens on the phone, not in the browser window, and the
-    # webhook notification + screenshot()/execute_script() tools cover visibility,
-    # so headless is safe by default. Set SELENIUM_HEADLESS=0 to watch it run, or
-    # pass headless=False explicitly (CWL_login does this automatically when a
-    # manual Duo step is detected).
-    use_headless = (os.getenv("SELENIUM_HEADLESS", "1") != "0") if headless is None else headless
+    use_headless = default_headless() if headless is None else headless
 
     def build(user_data_dir):
         options = Options()
@@ -93,18 +95,94 @@ def get_driver(profile_dir=None, headless=None):
 
 
 
-def _switch_to_visible(driver):
-    """Quit a headless session and relaunch a visible one at the same URL/profile,
-    so the user can complete a manual step (e.g. Duo) themselves."""
+# Fields Storage/Network.setCookies accepts (getCookies returns a few extra, e.g.
+# "size" and "session", that setCookies rejects).
+_COOKIE_FIELDS = {
+    "name", "value", "domain", "path", "secure", "httpOnly", "sameSite",
+    "expires", "priority", "sourceScheme", "sourcePort", "partitionKey",
+}
+
+
+def _get_all_cookies(driver):
+    for cmd in ("Storage.getCookies", "Network.getAllCookies"):
+        try:
+            return driver.execute_cdp_cmd(cmd, {}).get("cookies", [])
+        except Exception:
+            continue
+    return []
+
+
+def _set_all_cookies(driver, cookies):
+    cleaned = []
+    for cookie in cookies:
+        c = {k: v for k, v in cookie.items() if k in _COOKIE_FIELDS}
+        if cookie.get("session") or c.get("expires", -1) <= 0:
+            c.pop("expires", None)
+        cleaned.append(c)
+    if not cleaned:
+        return
+    try:
+        driver.execute_cdp_cmd("Storage.setCookies", {"cookies": cleaned})
+        return
+    except Exception:
+        pass
+    # batch rejected (e.g. one malformed cookie) -- fall back to one at a time
+    for c in cleaned:
+        try:
+            driver.execute_cdp_cmd("Network.setCookie", c)
+        except Exception:
+            pass
+
+
+def bring_to_front(driver):
+    """Raise a visible Chrome window above other windows so the user notices it
+    (minimize + maximize is the reliable way to do that through WebDriver)."""
+    try:
+        driver.minimize_window()
+        driver.maximize_window()
+    except Exception:
+        pass
+
+
+def relaunch(driver, headless):
+    """Restart the browser in headless or visible mode, carrying over every open
+    tab (and which one is active) plus all cookies -- including session-only ones
+    like a fresh CWL login, which the profile on disk wouldn't keep. Chrome can't
+    switch modes on a running window, so a restart is the only way. Unsaved form
+    input and in-page state are lost."""
     profile_dir = getattr(driver, "_mcp_profile_dir", None) or PROFILE_DIR
-    pending_url = driver.current_url
+    urls, active = [], 0
+    try:
+        current = driver.current_window_handle
+        for i, handle in enumerate(driver.window_handles):
+            driver.switch_to.window(handle)
+            urls.append(driver.current_url)
+            if handle == current:
+                active = i
+    except Exception:
+        pass
+    cookies = _get_all_cookies(driver)
     try:
         driver.quit()
     except Exception:
         pass
-    visible = get_driver(profile_dir=profile_dir, headless=False)
-    visible.get(pending_url)
-    return visible
+
+    new_driver = get_driver(profile_dir=profile_dir, headless=headless)
+    _set_all_cookies(new_driver, cookies)
+    for i, url in enumerate(urls):
+        try:
+            if i > 0:
+                new_driver.switch_to.new_window("tab")
+            new_driver.get(url)
+        except Exception:
+            pass
+    try:
+        new_driver.switch_to.window(new_driver.window_handles[active])
+    except Exception:
+        pass
+    if not headless:
+        bring_to_front(new_driver)
+    return new_driver
 
 
 MANUAL_AUTH_TIMEOUT = int(os.getenv("CWL_MANUAL_AUTH_TIMEOUT", "300"))
@@ -115,15 +193,16 @@ def _wait_for_manual_auth(driver, timeout=MANUAL_AUTH_TIMEOUT):
     picking a method, "remember this device", etc.), by waiting for the browser to
     navigate away from duosecurity.com. This makes CWL_login (and so the MCP tool
     call using it) wait for the manual step to actually finish instead of returning
-    on stale mid-flow state."""
+    on stale mid-flow state. Returns True if Duo finished, False on timeout."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
             if "duosecurity.com" not in driver.current_url:
-                return
+                return True
         except Exception:
-            return
+            return True
         time.sleep(1)
+    return False
 
 
 def CWL_login(driver, url):
@@ -147,13 +226,17 @@ def CWL_login(driver, url):
         time.sleep(0.5)
         if "duosecurity.com" in driver.current_url:
             _notify_duo_push()
-            if getattr(driver, "_mcp_headless", False):
+            was_headless = getattr(driver, "_mcp_headless", False)
+            if was_headless:
                 # Duo may need a manual step (pick a method, "remember this device", etc.) --
                 # unhide the browser so the user can finish it themselves
-                driver = _switch_to_visible(driver)
+                driver = relaunch(driver, headless=False)
             # block here until the manual step is actually done, so the caller (and
             # any agent waiting on this tool call) doesn't continue on stale state
-            _wait_for_manual_auth(driver)
+            finished = _wait_for_manual_auth(driver)
+            if was_headless and finished:
+                # done with the user -- go back to hidden, keeping the new login
+                driver = relaunch(driver, headless=True)
             break
 
     return driver
