@@ -4,6 +4,7 @@
 .chrome_profile_simtest
 links.json
 screenshots/
+mcp-files/
 __pycache__/
 google_token.json
 gmail_token.json

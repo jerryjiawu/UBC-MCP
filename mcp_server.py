@@ -13,8 +13,9 @@ import json
 import re
 import subprocess
 import sys
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
+import requests
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -32,10 +33,21 @@ EXEC_ENABLED = os.getenv("MCP_ALLOW_EXEC") == "1"
 # Resolve relative file paths against the project root, not the MCP client's launch cwd
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 LINKS_FILE = os.path.join(PROJECT_ROOT, "links.json")
+# Files downloaded via download_file() (e.g. a Canvas syllabus) land here, so the agent
+# can read them afterwards with read_file/read_pdf/list_dir.
+MCP_FILES_DIR = os.path.join(PROJECT_ROOT, "mcp-files")
 
 
 def _resolve_path(path: str) -> str:
     return path if os.path.isabs(path) else os.path.join(PROJECT_ROOT, path)
+
+
+def _safe_filename(name: str) -> str:
+    """Strip any directory components and characters invalid on Windows, so a filename
+    derived from a URL or Content-Disposition header can't escape MCP_FILES_DIR."""
+    name = os.path.basename((name or "").strip().replace("\\", "/"))
+    name = re.sub(r'[<>:"|?*\x00-\x1f]', "_", name)
+    return name or "download"
 
 
 def _load_links() -> dict:
@@ -261,6 +273,57 @@ def screenshot(filename: str = "") -> str:
 
 
 @mcp.tool()
+def download_file(url: str, filename: str = "") -> str:
+    """Download a file (e.g. a Canvas syllabus or course document) using the shared browser's
+    authenticated session, saving it into the mcp-files/ folder, and return the saved path.
+
+    'url' may be a path (resolved against the current page's origin) or a full URL, e.g. a
+    Canvas '.../files/<id>/download' link found via get_links() or fetch_api(). Reuses the
+    browser's session cookies, so it works on CWL-protected pages without re-authenticating.
+    If 'filename' is omitted, it's derived from the response's Content-Disposition header or
+    the URL. After downloading, read the file with read_file (text) or read_pdf (PDF).
+    """
+    driver = _get_driver()
+    resolved_url = urljoin(driver.current_url, url)
+
+    session = requests.Session()
+    for cookie in driver.get_cookies():
+        session.cookies.set(cookie["name"], cookie["value"], domain=cookie.get("domain"))
+    try:
+        user_agent = driver.execute_script("return navigator.userAgent;")
+    except Exception:
+        user_agent = None
+
+    try:
+        resp = session.get(
+            resolved_url,
+            headers={"User-Agent": user_agent} if user_agent else None,
+            timeout=30,
+            allow_redirects=True,
+        )
+    except requests.RequestException as e:
+        return f"error: {e}"
+    if resp.status_code >= 400:
+        return f"error: HTTP {resp.status_code} fetching {resolved_url!r}"
+
+    name = filename.strip()
+    if not name:
+        content_disposition = resp.headers.get("Content-Disposition", "")
+        match = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)\"?", content_disposition)
+        if match:
+            name = match.group(1)
+        else:
+            name = os.path.basename(urlparse(resp.url).path) or "download"
+    name = _safe_filename(name)
+
+    os.makedirs(MCP_FILES_DIR, exist_ok=True)
+    target = os.path.join(MCP_FILES_DIR, name)
+    with open(target, "wb") as f:
+        f.write(resp.content)
+    return f"saved {len(resp.content)} bytes -> {target}"
+
+
+@mcp.tool()
 def execute_script(code: str) -> str:
     """Run synchronous JavaScript in the current page (e.g. to pierce shadow DOM or read structured data)
     and return its JSON-serializable result. This is an elevated-privilege tool: it can read cookies,
@@ -376,6 +439,30 @@ def read_file(path: str, max_chars: int = 20000) -> str:
     target = _resolve_path(path)
     with open(target, "r", encoding="utf-8", errors="replace") as f:
         return f.read(max_chars)
+
+
+@mcp.tool()
+def read_pdf(path: str, max_chars: int = 20000) -> str:
+    """Extract and return text from a PDF file, e.g. a syllabus saved via download_file() into
+    mcp-files/ (relative paths are resolved from the project root). Truncated to max_chars."""
+    target = _resolve_path(path)
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return "error: pypdf is not installed. Run: pip install pypdf"
+    try:
+        reader = PdfReader(target)
+    except Exception as e:
+        return f"error: {e}"
+    chunks = []
+    total = 0
+    for page in reader.pages:
+        if total >= max_chars:
+            break
+        text = page.extract_text() or ""
+        chunks.append(text)
+        total += len(text)
+    return "\n".join(chunks)[:max_chars]
 
 
 @mcp.tool()

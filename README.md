@@ -61,7 +61,8 @@ python src/cwl.py
 - `click_element` / `type_text` — interact with the current page.
 - `execute_script` — run JavaScript on the page (e.g. to pierce shadow DOM or read structured data).
 - `fetch_api` — call a site's API endpoints using the page's authenticated session (cookies), e.g. `GET /api/v1/courses/...`.
-- `list_dir` / `read_file` — browse and read files on disk, resolved against the project root regardless of the MCP client's launch directory.
+- `download_file` — download a file (e.g. a Canvas syllabus or course document) using the browser's authenticated session, saving it into `mcp-files/`.
+- `list_dir` / `read_file` / `read_pdf` — browse and read files on disk (`read_pdf` extracts text from PDFs), resolved against the project root regardless of the MCP client's launch directory.
 - `run_python` / `run_shell` — execute arbitrary code/commands.
 
 Add it to your MCP client config (e.g. VS Code, Claude Desktop) pointing at:
@@ -79,6 +80,7 @@ python mcp_server.py
   - `fetch_api` only allows `GET`/`HEAD` there.
   - `execute_script` uses a best-effort heuristic to block scripts that look like they submit/mutate data (POST/PUT/PATCH/DELETE fetches, `form.submit()`) there — **this is not a hard guarantee**, since arbitrary JS can do many things. Treat `execute_script` (and `MCP_ALLOW_EXEC`, which bypasses all of the above via raw HTTP) as elevated-privilege tools.
 - `read_file` / `list_dir` can expose secrets (e.g. `.env`) to any connected agent — be mindful of what you point them at.
+- `download_file` reuses the browser's session cookies to fetch arbitrary URLs and writes into `mcp-files/` (gitignored, since downloaded course materials are personal/copyrighted) — treat it like `fetch_api` as an elevated-privilege tool.
 - Only run this server locally over stdio. Do not expose it over a network.
 
 ### Google Tasks MCP Server
@@ -178,6 +180,7 @@ rag_server.py       # Local RAG server: retrieval over src/context/ for discord_
 mcp_manager.py      # "MCP Mommy": dashboard + tray icon to start/stop/monitor everything below
 discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + RAG-backed UBC status Q&A
 links.json          # saved platform shortcuts (gitignored, created by save_link)
+mcp-files/          # files downloaded via download_file (gitignored, e.g. a Canvas syllabus)
 google_token.json   # Google Tasks OAuth refresh token (gitignored, created by --auth)
 gmail_token.json    # Gmail OAuth refresh token (gitignored, created by --auth)
 .rag_cache.npz      # cached chunk embeddings (gitignored, rebuilt when context files change)

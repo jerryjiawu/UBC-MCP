@@ -14,3 +14,4 @@ tzdata
 sentence-transformers
 numpy
 watchdog
+pypdf
