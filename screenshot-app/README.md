@@ -1,17 +1,17 @@
 # Screenshot Viewer
 
-Retrieves your most recent Windows screenshot from a small cloud-hosted
-Flask server, previews it on your iPhone, and lets you copy it to the
-clipboard or save it to Photos — with no Mac, Xcode, or app compiling
-required.
+Retrieves your recent Windows screenshots from a small cloud-hosted Flask
+server and shows them in a Home Screen web app on your iPhone, where you can
+copy them to the clipboard or save them to Photos — with no Mac, Xcode, or
+app compiling required.
 
 ## How it works
 
 ```
 Windows PC                    Cloud (DigitalOcean App Platform)         iPhone
 -----------                   ---------------------------------         ------
-uploader.py  --- POST /upload --->   Flask server (app.py)   <--- GET /screenshot --- Scriptable script
-(watches Pictures\Screenshots)        stores latest image in memory       (Copy to Clipboard / Save to Photos)
+uploader.py  --- POST /upload --->   Flask server (app.py)   <--- GET /screenshots --- Home Screen web app
+(watches Pictures\Screenshots)        keeps the last 10 in memory          (served by the same server at /)
 ```
 
 Both the upload and download endpoints require a shared secret key
@@ -20,9 +20,9 @@ the key and image are encrypted in transit.
 
 ## 1. Generate a secret key
 
-Run this once and save the output somewhere safe — you'll paste it into two
-places below (the server's env var, and the uploader's `.env`), plus the
-iOS script:
+Run this once and save the output somewhere safe — you'll paste it into the
+server's env var and the uploader's `.env`, and enter it once in the iPhone
+app:
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -119,7 +119,33 @@ the uploader every time you log in. Remove it later with:
 Unregister-ScheduledTask -TaskName "ScreenshotUploader" -Confirm:$false
 ```
 
-## 5. Set up the iPhone script (Scriptable — free, no compiling)
+## 5. Install the iPhone app (Home Screen web app)
+
+The server also hosts a small web app at its root URL. Added to the Home
+Screen, it opens full-screen with its own icon, like a regular app.
+
+1. On your iPhone, open **Safari** (it has to be Safari) and go to your app's
+   URL, e.g. `https://screenshot-app-xxxxx.ondigitalocean.app`.
+2. Tap the **Share** button, then **Add to Home Screen**, then **Add**.
+3. Open **Screenshots** from your Home Screen and paste your secret key when
+   asked. It's saved on the phone, so you only do this once. (Enter it in the
+   Home Screen app, not in Safari — iOS keeps their storage separate.)
+
+What you get:
+
+- A large preview of your latest screenshot, which updates by itself a few
+  seconds after you take a new one on your PC.
+- **Copy** puts the image on the clipboard; **Save / Share** opens the iOS
+  share sheet, where **Save Image** puts it in Photos (or send it anywhere).
+- A **Recent** grid of the last 10 screenshots (set `HISTORY_SIZE` on the
+  server to change that). Tap one to select it.
+- Tap the preview for a full-screen view; tap the image again to zoom in.
+- The gear button forgets the saved key (e.g. if you rotate the secret).
+
+## 6. Alternative: the Scriptable script
+
+The original no-UI flow still works if you prefer it — the server keeps the
+`/screenshot` endpoint it uses.
 
 1. Install **Scriptable** from the iOS App Store (free, official app by
    Simon Støvring).
@@ -161,10 +187,13 @@ through the built-in **Shortcuts** app:
 
 ## Notes
 
-- The server only keeps the single most recent screenshot in memory (not on
-  disk), so there's nothing to clean up, but it also means the image is lost
-  if the app restarts/redeploys — that's fine since the uploader will push
-  the next screenshot automatically.
+- The server only keeps the last `HISTORY_SIZE` (default 10) screenshots in
+  memory (not on disk), so there's nothing to clean up, but they're lost if
+  the app restarts/redeploys — that's fine since the uploader re-sends the
+  latest one when it starts and pushes every new one automatically.
+- Because the history lives in process memory, the server must run as a
+  single gunicorn worker (the default in the Procfile and run command). Don't
+  add `--workers`.
 - This is intentionally simple (single shared secret, in-memory storage) for
   personal use. Don't reuse this server for anything containing sensitive
   data beyond casual screenshots.
