@@ -114,6 +114,25 @@
   .btn svg { width: 20px; height: 20px; }
   .btn.block { width: 100%; }
 
+  /* ---- OCR text ---- */
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 26px 0 10px; }
+  .section-head h2 { margin: 0 4px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+    border-radius: 999px; font-size: 14px; font-weight: 600;
+    background: var(--surface); box-shadow: var(--shadow); color: var(--accent);
+  }
+  .chip svg { width: 15px; height: 15px; }
+  .chip:disabled { opacity: .45; }
+  .ocr {
+    background: var(--surface); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 14px 16px; max-height: 45vh; overflow: auto; -webkit-overflow-scrolling: touch;
+    font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+    -webkit-user-select: text; user-select: text;
+  }
+  .ocr-status { color: var(--muted); font-size: 14px; padding: 0 4px; }
+  .ocr-status:empty { display: none; }
+
   /* ---- History ---- */
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 26px 4px 10px; }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -209,6 +228,18 @@
       </button>
     </div>
 
+    <section id="text-section" hidden>
+      <div class="section-head">
+        <h2>Text</h2>
+        <button class="chip" id="copy-text-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy text
+        </button>
+      </div>
+      <div class="ocr" id="ocr-text" hidden></div>
+      <div class="ocr-status" id="ocr-status"></div>
+    </section>
+
     <h2 id="recent-heading" hidden>Recent</h2>
     <div class="grid" id="grid"></div>
   </div>
@@ -234,7 +265,7 @@
 <script>
 (() => {
   const KEY_STORAGE = "screenshot-api-key";
-  const POLL_MS = 4000;
+  const POLL_MS = 2000;
 
   const $ = (id) => document.getElementById(id);
   const els = {
@@ -245,6 +276,8 @@
     previewImg: $("preview-img"), previewLoading: $("preview-loading"), empty: $("empty"),
     metaTime: $("meta-time"), metaSize: $("meta-size"),
     copyBtn: $("copy-btn"), saveBtn: $("save-btn"),
+    textSection: $("text-section"), copyTextBtn: $("copy-text-btn"),
+    ocrText: $("ocr-text"), ocrStatus: $("ocr-status"),
     recentHeading: $("recent-heading"), grid: $("grid"),
     viewer: $("viewer"), viewerStage: $("viewer-stage"), viewerImg: $("viewer-img"),
     viewerHint: $("viewer-hint"), viewerClose: $("viewer-close"),
@@ -255,7 +288,7 @@
 
   const state = {
     key: null,
-    items: [],          // [{id, mimetype, uploaded_at, size}], newest first
+    items: [],          // [{id, mimetype, uploaded_at, size, text}], newest first
     selectedId: null,
     cache: new Map(),   // id -> {promise, blob, url, png}
     online: true,
@@ -414,7 +447,50 @@
           .catch(() => { if (state.selectedId === item.id) els.previewLoading.textContent = "Couldn't load image"; });
       }
     }
+    renderText(item);
     renderGrid();
+  }
+
+  // OCR text arrives a second or two after the image (the PC uploads the
+  // image first, then the recognized text), so show a pending state meanwhile.
+  const OCR_WAIT_SECONDS = 60;
+  let renderedText = null;
+  function renderText(item) {
+    els.textSection.hidden = !item;
+    if (!item) { renderedText = null; return; }
+
+    const text = item.text;
+    const hasText = typeof text === "string" && text.trim() !== "";
+    els.copyTextBtn.disabled = !hasText;
+    els.ocrText.hidden = !hasText;
+
+    // Only touch the DOM when the text actually changes, so polling doesn't
+    // wipe out a selection the user is in the middle of making.
+    const key = `${item.id}\u0000${text}`;
+    if (hasText && renderedText !== key) els.ocrText.textContent = text;
+    renderedText = key;
+
+    if (hasText) {
+      els.ocrStatus.textContent = "";
+    } else if (typeof text === "string") {
+      els.ocrStatus.textContent = "No text found in this screenshot.";
+    } else if (Date.now() / 1000 - item.uploaded_at < OCR_WAIT_SECONDS) {
+      els.ocrStatus.textContent = "Reading text…";
+    } else {
+      els.ocrStatus.textContent = "Text isn't available for this screenshot.";
+    }
+  }
+
+  function copyText() {
+    const text = selected()?.text;
+    if (!text) return;
+    if (!navigator.clipboard?.writeText) {
+      toast("Copy isn't supported here — select the text instead");
+      return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => toast("Text copied"))
+      .catch((e) => toast(`Couldn't copy: ${e.message || e}`));
   }
 
   function showPreview(entry, item) {
@@ -588,6 +664,7 @@
   });
   els.copyBtn.addEventListener("click", copySelected);
   els.saveBtn.addEventListener("click", saveSelected);
+  els.copyTextBtn.addEventListener("click", copyText);
   els.previewImg.addEventListener("click", openViewer);
   els.viewerClose.addEventListener("click", closeViewer);
   els.viewerImg.addEventListener("click", (ev) => {

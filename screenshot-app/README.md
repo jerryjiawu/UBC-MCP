@@ -88,6 +88,15 @@ It uses filesystem events (not polling), so a screenshot taken with
 **Win+PrtScn** is uploaded within about a second — watch for an `[uploaded]`
 line in the console. Press Ctrl+C to stop.
 
+### Text recognition (OCR)
+
+The uploader also reads the text in each screenshot, using the OCR engine
+built into Windows — offline, free, nothing extra to install beyond the pip
+packages above. The image goes up first and the text follows a second or two
+later (watch for an `[ocr]` line). It recognizes the languages installed under
+**Settings > Time & language > Language** (English is there by default). Set
+`OCR_ENABLED=0` in `.env` to turn it off.
+
 ### Running it inside this project (recommended if you use mcp_manager.py)
 
 This project's `mcp_manager.py` already manages its other background
@@ -99,7 +108,14 @@ python mcp_manager.py
 ```
 
 and it starts/stops/restarts alongside everything else from the dashboard
-at `http://127.0.0.1:5055` (or the tray icon) — no separate setup needed.
+at `http://127.0.0.1:5055` (or the tray icon). It uses the project's own
+venv, so install the project requirements there (this includes the OCR
+packages):
+
+```powershell
+cd "c:\Users\itsro\OneDrive\Documents\UBC MCP"
+.venv\Scripts\pip install -r requirements.txt
+```
 
 ### Running it standalone instead
 
@@ -137,6 +153,10 @@ What you get:
   seconds after you take a new one on your PC.
 - **Copy** puts the image on the clipboard; **Save / Share** opens the iOS
   share sheet, where **Save Image** puts it in Photos (or send it anywhere).
+- A **Text** panel with the words recognized in the screenshot. **Copy text**
+  copies all of it, or press and hold to select just part. OCR is good but
+  not perfect — it can drop symbols or misread very small text — so
+  double-check anything important.
 - A **Recent** grid of the last 10 screenshots (set `HISTORY_SIZE` on the
   server to change that). Tap one to select it.
 - Tap the preview for a full-screen view; tap the image again to zoom in.

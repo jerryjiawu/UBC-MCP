@@ -9,6 +9,7 @@ Endpoints:
   GET  /screenshot        - requires X-API-Key header; returns the latest image
   GET  /screenshots       - requires X-API-Key header; JSON list, newest first
   GET  /screenshots/<id>  - requires X-API-Key header; returns that image
+  POST /screenshots/<id>/text - requires X-API-Key header; body = OCR text (UTF-8)
 
 Images are kept in memory only (no disk persistence), capped at HISTORY_SIZE.
 This relies on gunicorn running a single worker so every request sees the same
@@ -29,6 +30,7 @@ app = Flask(__name__, static_folder=None)
 
 API_SECRET = os.environ.get("API_SECRET", "")
 HISTORY_SIZE = max(1, int(os.environ.get("HISTORY_SIZE", "10")))
+MAX_TEXT_BYTES = 256 * 1024
 
 # In-memory store of recent screenshots, newest first.
 _history = deque(maxlen=HISTORY_SIZE)
@@ -65,6 +67,7 @@ def upload():
         "bytes": data,
         "mimetype": request.headers.get("Content-Type", "image/png"),
         "uploaded_at": time.time(),
+        "text": None,  # OCR text, filled in by a follow-up POST from the uploader
     }
     _history.appendleft(entry)
     return jsonify(status="ok", id=entry["id"], uploaded_at=entry["uploaded_at"]), 200
@@ -88,6 +91,7 @@ def list_screenshots():
             "mimetype": e["mimetype"],
             "uploaded_at": e["uploaded_at"],
             "size": len(e["bytes"]),
+            "text": e["text"],
         }
         for e in _history
     ]
@@ -102,6 +106,19 @@ def get_screenshot(screenshot_id):
     for entry in _history:
         if entry["id"] == screenshot_id:
             return _image_response(entry)
+    abort(404, description="That screenshot is no longer available.")
+
+
+@app.route("/screenshots/<screenshot_id>/text", methods=["POST"])
+def set_screenshot_text(screenshot_id):
+    _check_auth()
+    data = request.get_data()
+    if len(data) > MAX_TEXT_BYTES:
+        abort(413, description="OCR text is too large.")
+    for entry in _history:
+        if entry["id"] == screenshot_id:
+            entry["text"] = data.decode("utf-8", errors="replace")
+            return jsonify(status="ok"), 200
     abort(404, description="That screenshot is no longer available.")
 
 

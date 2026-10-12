@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+import ocr
+
 # Load this script's own .env regardless of the process's current working
 # directory (mcp_manager.py launches it with cwd=PROJECT_ROOT).
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
@@ -64,6 +66,8 @@ DIR_CHECK_SECONDS = float(os.environ.get("DIR_CHECK_SECONDS", "5"))
 # create/write event fires, so give it a beat and retry a few times instead
 # of failing outright on a sharing violation.
 UPLOAD_DEBOUNCE_SECONDS = 0.3
+
+OCR_ENABLED = os.environ.get("OCR_ENABLED", "1").strip().lower() not in ("0", "false", "no")
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg")
 MIMETYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
@@ -138,6 +142,31 @@ class UploadScheduler:
         resp.raise_for_status()
         log(f"[uploaded] {os.path.basename(path)} -> {SERVER_URL}/upload ({resp.status_code})")
 
+        # OCR runs after the image is already up, so the phone shows the
+        # screenshot immediately and the text fills in a moment later.
+        if OCR_ENABLED:
+            self._upload_text(resp.json().get("id"), data, path)
+
+    def _upload_text(self, screenshot_id, data, path):
+        if not screenshot_id:
+            log("[ocr] server didn't return an id (old server version?), skipping")
+            return
+        # Failures here are logged, not raised: the image itself was uploaded
+        # fine, and raising would make the scheduler re-upload it.
+        try:
+            started = time.time()
+            text = ocr.extract_text(data)
+            resp = requests.post(
+                f"{SERVER_URL}/screenshots/{screenshot_id}/text",
+                data=text.encode("utf-8"),
+                headers={"X-API-Key": API_SECRET, "Content-Type": "text/plain; charset=utf-8"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            log(f"[ocr] {len(text.splitlines())} lines in {time.time() - started:.1f}s")
+        except Exception as e:
+            log(f"[ocr] failed on {os.path.basename(path)}: {e}")
+
 
 class ScreenshotHandler(FileSystemEventHandler):
     def __init__(self, scheduler):
@@ -160,6 +189,15 @@ def main():
     if not SERVER_URL or not API_SECRET:
         log("ERROR: SERVER_URL and API_SECRET must be set (see .env.example).")
         sys.exit(1)
+
+    global OCR_ENABLED
+    if OCR_ENABLED:
+        ok, reason = ocr.available()
+        if not ok:
+            OCR_ENABLED = False
+            log(f"[ocr] disabled: {reason}")
+        else:
+            log("[ocr] enabled (Windows OCR)")
 
     scheduler = UploadScheduler()
     observer = Observer()
