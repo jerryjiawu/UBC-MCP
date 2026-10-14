@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Q{{ qn }}. {{ q.spec.title }}{% endblock %}
+{% block navright %}{% include "_timer.html" %}{% endblock %}
+{% block banner %}
+{% if inst.remaining_s is not none %}<div class="progress timer-bar rounded-0"><div id="timer-bar" class="progress-bar"></div></div>{% endif %}
+{% endblock %}
+{% block content %}
+{% set closed = inst.finished or q.locked %}
+<div class="d-flex align-items-center mb-2 gap-2">
+  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('instance', iid=inst.id) }}">&larr; {{ inst.set.title }}</a>
+  <div class="ms-auto btn-group btn-group-sm">
+    <a class="btn btn-outline-secondary {% if qn == 1 %}disabled{% endif %}" href="{{ url_for('question', iid=inst.id, qn=qn-1) }}">Previous question</a>
+    <a class="btn btn-outline-secondary {% if qn == inst.questions|length %}disabled{% endif %}" href="{{ url_for('question', iid=inst.id, qn=qn+1) }}">Next question</a>
+  </div>
+</div>
+<div class="row">
+<div class="col-lg-9">
+<form method="post" action="{{ url_for('submit', iid=inst.id, qn=qn) }}" id="qform">
+<div class="card">
+  <div class="card-header bg-primary text-white"><h1>Q{{ qn }}. {{ q.spec.title }}</h1></div>
+  <div class="card-body question-body">
+    {{ q.spec.prompt|md }}
+    {% if q.spec.constraints %}
+      <div class="alert alert-warning py-2 small">
+        <strong>Constraints (checked by the autograder):</strong>
+        {% if q.spec.constraints.require_recursion %}must be recursive.{% endif %}
+        {% if q.spec.constraints.forbid_loops %}no loops or comprehensions.{% endif %}
+        {% if q.spec.constraints.forbid_builtins %}not allowed: {% for b in q.spec.constraints.forbid_builtins %}<code>{{ b }}</code> {% endfor %}{% endif %}
+        Violations score 0.
+      </div>
+    {% endif %}
+    {% if q.spec.examples %}
+      <p class="mb-1"><strong>Examples</strong></p>
+      <pre class="mb-3"><code>{% for e in q.spec.examples %}&gt;&gt;&gt; {{ e.call }}
+{{ e.result }}
+{% endfor %}</code></pre>
+    {% endif %}
+
+    <div class="card file-editor mb-0">
+      <div class="card-header d-flex align-items-center py-1">
+        <span class="me-auto">solution.py</span>
+        {% if not closed %}<button type="button" class="btn btn-sm btn-light" id="restore">Restore original file</button>{% endif %}
+      </div>
+      <div id="editor">{{ q.code }}</div>
+      <textarea name="code" id="code" class="d-none">{{ q.code }}</textarea>
+      <textarea id="starter" class="d-none">{{ q.spec.starter }}</textarea>
+    </div>
+  </div>
+  <div class="card-footer d-flex flex-wrap align-items-center gap-2">
+    {% if closed %}
+      <span class="text-muted">{% if inst.finished %}Assessment closed.{% elif q.complete %}Question complete &mdash; full marks.{% else %}No attempts remaining.{% endif %}</span>
+    {% else %}
+      <button class="btn btn-primary" name="action" value="grade">Save &amp; Grade</button>
+      <button class="btn btn-info" name="action" value="save">Save only</button>
+      <span class="small text-muted ms-1">
+        {% if q.attempts_left is not none %}{{ q.attempts_left }} attempt{{ "s" if q.attempts_left != 1 }} left{% else %}unlimited attempts{% endif %}
+        &middot; worth up to <strong>{{ q.available|pts }}</strong> points on your next attempt
+      </span>
+    {% endif %}
+  </div>
+</div>
+</form>
+
+{% if inst.finished %}
+<div class="card">
+  <div class="card-header">Reference solution</div>
+  <pre class="mb-0 p-3"><code>{{ q.spec.reference }}</code></pre>
+</div>
+{% endif %}
+
+<div id="submissions">
+{% for a in q.attempts|reverse %}
+  {% set r = a.report %}{% set p = (a.frac*100)|round|int %}
+  <div class="card">
+    <div class="card-header bg-light d-flex align-items-center flex-wrap gap-2">
+      <span class="me-auto">Submitted answer {{ a.n }}
+        <span class="text-muted small">&middot; {{ a.created|ago }}</span></span>
+      <span class="badge text-bg-{{ 'success' if p == 100 else ('warning' if p > 0 else 'danger') }}">{{ p }}%</span>
+      <span class="small">Awarded <strong>{{ a.awarded|pts }}</strong>
+        {% if a.penalty_before %}<span class="text-muted">({{ a.raw_points|pts }} &minus; {{ a.penalty_before|pts }} penalty)</span>{% endif %}</span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#sub{{ a.n }}">details</button>
+    </div>
+    <div class="collapse {% if loop.first %}show{% endif %}" id="sub{{ a.n }}">
+    <div class="card-body">
+      {% if r.load_error %}
+        <div class="alert alert-danger mb-2">
+          <strong>{{ CATEGORY_LABELS.get(r.categories|first, "Error") }}:</strong>
+          <span class="mono">{{ r.load_error.type }}: {{ r.load_error.msg }}{% if r.load_error.line %} (line {{ r.load_error.line }}){% endif %}</span>
+          <div class="small mt-1">No tests could run.</div>
+        </div>
+      {% else %}
+        <p class="mb-2"><strong>{{ r.passed }}/{{ r.total }}</strong> tests passed.</p>
+      {% endif %}
+      {% for c in r.constraint_errors %}<div class="alert alert-warning py-1 mb-2 small">Constraint violated: {{ c|md|striptags }} &rarr; score set to 0.</div>{% endfor %}
+
+      {% if r.categories %}
+      <div class="mb-2">
+        {% for cat, n in r.categories.items() %}
+          <span class="badge rounded-pill text-bg-light border me-1">{{ CATEGORY_LABELS.get(cat, cat) }}{% if n > 1 %} &times;{{ n }}{% endif %}
+            {% if a.deduction and r.costs %}<span class="text-danger">&minus;{{ r.costs[cat]|pts }}</span>{% endif %}</span>
+        {% endfor %}
+        {% if a.deduction %}<div class="small text-danger mt-1">This attempt deducts {{ a.deduction|pts }} point{{ "s" if a.deduction != 1 }} from the question's value for later attempts.</div>{% endif %}
+      </div>
+      {% endif %}
+
+      {% if r.tests %}
+      <table class="table table-sm mb-0">
+        <thead><tr><th style="width:5rem">Test</th><th style="width:5rem">Result</th><th>Details</th></tr></thead>
+        <tbody>
+        {% for t in r.tests %}
+          <tr class="test-row {{ 'pass' if t.ok else 'fail' }}">
+            <td>Test {{ t.n }}{% if t.edge %} <span class="badge text-bg-light border">edge</span>{% endif %}</td>
+            <td>{% if t.ok %}<span class="text-success">passed</span>{% else %}<span class="text-danger">failed</span>{% endif %}</td>
+            <td>
+              {% if not t.ok %}
+                {% if t.hidden %}<span class="text-muted small">hidden test &middot; {{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
+                {% else %}
+                  <div class="mono"><span class="text-muted">call:</span> {{ t.call }}
+<span class="text-muted">expected:</span> {{ t.expected }}
+<span class="text-muted">got:</span> {{ t.got }}{% if t.stdout %}
+<span class="text-muted">printed:</span> {{ t.stdout }}{% endif %}</div>
+                  <span class="small text-muted">{{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+</div>
+
+<div class="col-lg-3">
+  <div class="card">
+    <div class="card-header bg-secondary text-white">Question</div>
+    <table class="table table-sm sidebar-table mb-0">
+      <tr><td>Submission status</td><td class="text-end"><span class="badge text-bg-{{ {"complete":"success","graded":"warning","saved":"info","unanswered":"secondary"}[q.status] }}">{{ q.status }}</span></td></tr>
+      <tr><td>Value</td><td class="text-end">{{ q.spec.points|pts }}</td></tr>
+      <tr><td>Penalties so far</td><td class="text-end {% if q.penalty %}text-danger{% endif %}">&minus;{{ q.penalty|pts }}</td></tr>
+      <tr><td>Value now</td><td class="text-end"><strong>{{ q.available|pts }}</strong></td></tr>
+      <tr><td>Awarded points</td><td class="text-end"><strong>{{ q.awarded|pts }}</strong>/{{ q.spec.points|pts }}</td></tr>
+      <tr><td>Attempts</td><td class="text-end">{{ q.used }}{% if q.max_attempts %}/{{ q.max_attempts }}{% endif %}</td></tr>
+    </table>
+    {% if q.attempts %}
+    <div class="card-body py-2">
+      {% for a in q.attempts %}{% set p = (a.frac*100)|round|int %}<span class="badge attempt-badge me-1 mb-1 text-bg-{{ 'success' if p == 100 else ('warning' if p > 0 else 'danger') }}" title="attempt {{ a.n }}: {{ a.awarded|pts }} pts">{{ p }}%</span>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if penalties %}
+  <div class="card">
+    <div class="card-header">Your most common errors</div>
+    <table class="table table-sm sidebar-table mb-0">
+      {% for p in penalties %}
+      <tr><td>{{ p.label }}<div class="text-muted small">seen {{ p.count }}&times;</div></td><td class="text-end text-danger">&minus;{{ p.effective|pts }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% include "_overview.html" %}
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.min.js"></script>
+<script>
+  ace.config.set("basePath", "https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/");
+  const editor = ace.edit("editor");
+  editor.setTheme("ace/theme/chrome");
+  editor.session.setMode("ace/mode/python");
+  editor.session.setTabSize(4);
+  editor.session.setUseSoftTabs(true);
+  editor.setOptions({ showPrintMargin: false, fontSize: "14px" });
+  editor.setReadOnly({{ "true" if closed else "false" }});
+  const code = document.getElementById("code");
+  document.getElementById("qform").addEventListener("submit", () => { code.value = editor.getValue(); });
+  const restore = document.getElementById("restore");
+  if (restore) restore.addEventListener("click", () => {
+    if (confirm("Replace your code with the original starter file?"))
+      editor.setValue(document.getElementById("starter").value, -1);
+  });
+  // Ctrl/Cmd+Enter = Save & Grade
+  editor.commands.addCommand({ name: "grade", bindKey: { win: "Ctrl-Enter", mac: "Cmd-Enter" },
+    exec: () => document.querySelector("button[value=grade]")?.click() });
+</script>
+{% include "_timer_script.html" %}
+{% endblock %}

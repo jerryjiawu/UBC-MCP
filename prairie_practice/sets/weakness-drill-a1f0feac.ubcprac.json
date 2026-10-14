@@ -1,0 +1,110 @@
+{
+  "format": "ubc-practice/1",
+  "title": "Weakness drill",
+  "description": "",
+  "settings": {
+    "time_limit_min": 50,
+    "max_attempts": 5,
+    "language": "python"
+  },
+  "questions": [
+    {
+      "title": "Sum strictly between",
+      "function": "sum_between",
+      "inputs": {
+        "nums": "list[int(-30..30)](0..15)"
+      },
+      "prompt": "Write a function `sum_between(nums)` that returns the sum of the values in\n`nums` that are **strictly** greater than -2 and **strictly** less than 6.\nReturn `0` if there are none.",
+      "reference": "def sum_between(nums):\n    return sum(x for x in nums if -2 < x < 6)\n",
+      "topic": "loops",
+      "difficulty": 1,
+      "template": "sum_between",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "starter": "def sum_between(nums):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "sum_between([14, -14, 2, 21, 18, 30, 22, -21, 23, 22, 17, -20, -23])",
+          "result": "2"
+        },
+        {
+          "call": "sum_between([20, -17])",
+          "result": "0"
+        },
+        {
+          "call": "sum_between([])",
+          "result": "0"
+        }
+      ]
+    },
+    {
+      "title": "Transpose",
+      "function": "transpose",
+      "inputs": {
+        "grid": "grid[int(0..9)](1..4, 1..4)"
+      },
+      "prompt": "Write `transpose(grid)` that returns a **new** grid whose rows are the columns\nof the rectangular grid `grid`.",
+      "reference": "def transpose(grid):\n    return [[grid[r][c] for r in range(len(grid))] for c in range(len(grid[0]))]\n",
+      "topic": "nested_lists",
+      "difficulty": 2,
+      "template": "transpose",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "starter": "def transpose(grid):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "transpose([[5], [9], [3], [1]])",
+          "result": "[[5, 9, 3, 1]]"
+        },
+        {
+          "call": "transpose([[0], [7]])",
+          "result": "[[0, 7]]"
+        },
+        {
+          "call": "transpose([[6]])",
+          "result": "[[6]]"
+        }
+      ]
+    },
+    {
+      "title": "Flatten nested list",
+      "function": "flatten",
+      "inputs": {
+        "items": "nested[int(0..9)](0..5)"
+      },
+      "constraints": {
+        "require_recursion": true
+      },
+      "prompt": "`items` is a list whose elements are integers or (possibly nested) lists of\nintegers. Write a **recursive** function `flatten(items)` that returns a flat\nlist of all the integers, in left-to-right order.",
+      "reference": "def flatten(items):\n    out = []\n    for x in items:\n        if isinstance(x, list):\n            out += flatten(x)\n        else:\n            out.append(x)\n    return out\n",
+      "topic": "recursion",
+      "difficulty": 3,
+      "template": "flatten",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "edge_cases": [],
+      "starter": "def flatten(items):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "flatten([[], 0, 0, 6])",
+          "result": "[0, 0, 6]"
+        },
+        {
+          "call": "flatten([4, [8], 3, [4, [0]], [[], 1]])",
+          "result": "[4, 8, 3, 4, 0, 1]"
+        },
+        {
+          "call": "flatten([])",
+          "result": "[]"
+        }
+      ]
+    }
+  ]
+}

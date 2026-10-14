@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Assessments{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header bg-primary text-white d-flex align-items-center">
+    <h1 class="me-auto">Assessments</h1>
+  </div>
+  {% if sets %}
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
+    <thead><tr>
+      <th style="width:1%"></th><th>Assessment</th><th>Topics</th><th class="text-center">Questions</th>
+      <th class="text-center">Points</th><th class="text-center">Time</th><th class="text-center">Attempts / q</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for s in sets %}
+      <tr>
+        <td><span class="badge text-bg-danger">E{{ loop.revindex }}</span></td>
+        <td><strong>{{ s.title }}</strong><div class="text-muted small">id {{ s.id }} &middot; created {{ s.created|ago }}</div></td>
+        <td>{% for t in s.topics %}<span class="badge text-bg-light border me-1">{{ t }}</span>{% endfor %}</td>
+        <td class="text-center">{{ s.questions }}</td>
+        <td class="text-center">{{ s.points|pts }}</td>
+        <td class="text-center">{{ s.settings.time_limit_min or "&infin;"|safe }}{% if s.settings.time_limit_min %} min{% endif %}</td>
+        <td class="text-center">{{ s.settings.max_attempts or "&infin;"|safe }}</td>
+        <td class="text-end text-nowrap">
+          {% if s.open_instance %}
+            <a class="btn btn-sm btn-primary" href="{{ url_for('instance', iid=s.open_instance) }}">Resume</a>
+          {% else %}
+            <form class="d-inline" method="post" action="{{ url_for('start', set_id=s.id) }}">
+              <button class="btn btn-sm btn-primary">Start exam</button></form>
+          {% endif %}
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('export', set_id=s.id) }}" title="Download shareable file">Share file</a>
+          <form class="d-inline" method="post" action="{{ url_for('delete', set_id=s.id) }}"
+                onsubmit="return confirm('Delete this practice set? Past attempts stay in the error tracker.')">
+            <button class="btn btn-sm btn-outline-danger">Delete</button></form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="card-body text-muted">
+    No practice sets yet. Ask your AI to generate one (MCP tool <code>generate_practice_set</code>), or import a shared
+    <code>.ubcprac.json</code> file below.
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">Import a shared practice set</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('import_set') }}" enctype="multipart/form-data" class="row g-2 align-items-center">
+      <div class="col-sm-8 col-md-6"><input class="form-control form-control-sm" type="file" name="file" accept=".json"></div>
+      <div class="col-auto"><button class="btn btn-sm btn-secondary">Import</button></div>
+    </form>
+    <div class="form-text">Shared files include reference solutions that run on your computer to generate the tests. Only import files from people you trust.</div>
+  </div>
+</div>
+{% endblock %}

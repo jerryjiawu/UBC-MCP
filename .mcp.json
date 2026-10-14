@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "prairie-practice": {
+      "command": "C:\Users\itsro\OneDrive\Documents\UBC MCP\.venv\Scripts\python.exe",
+      "args": ["C:\Users\itsro\OneDrive\Documents\UBC MCP\prairie_practice_mcp.py"]
+    }
+  }
+}

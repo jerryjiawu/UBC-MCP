@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ inst.set.title }}{% endblock %}
+{% block navright %}{% include "_timer.html" %}{% endblock %}
+{% block banner %}
+{% if inst.remaining_s is not none %}<div class="progress timer-bar rounded-0"><div id="timer-bar" class="progress-bar"></div></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="row">
+<div class="col-lg-9">
+<div class="card">
+  <div class="card-header bg-primary text-white d-flex align-items-center">
+    <h1 class="me-auto">{{ inst.set.title }}</h1>
+    <span class="badge text-bg-light">Exam &middot; instance #{{ inst.id }}</span>
+  </div>
+  <div class="card-body">
+    {% if inst.set.description %}<p class="mb-2">{{ inst.set.description }}</p>{% endif %}
+    {% if inst.finished %}
+      <div class="alert alert-secondary mb-0">This assessment is closed. Total score:
+        <strong>{{ inst.awarded|pts }}/{{ inst.total_points|pts }}</strong>
+        ({{ ((100 * inst.awarded / inst.total_points) if inst.total_points else 0)|round|int }}%).
+        Reference solutions are now visible on each question page.</div>
+    {% else %}
+      <p class="mb-0 small text-muted">Each wrong attempt deducts points from that question's value,
+        based on the kinds of errors in it (see the <a href="{{ url_for('stats') }}">error tracker</a>).
+        Your best attempt counts.</p>
+    {% endif %}
+  </div>
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
+    <thead><tr><th>Question</th><th>Topic</th><th class="text-center">Status</th><th class="text-center">Attempts</th>
+      <th class="text-center">Value now</th><th class="text-center">Awarded points</th></tr></thead>
+    <tbody>
+    {% for q in inst.questions %}
+      <tr>
+        <td><a href="{{ url_for('question', iid=inst.id, qn=loop.index) }}">Q{{ loop.index }}. {{ q.spec.title }}</a></td>
+        <td><span class="badge text-bg-light border">{{ q.spec.topic }}</span></td>
+        <td class="text-center">
+          {% set c = {"complete":"success","graded":"warning","saved":"info","unanswered":"secondary"}[q.status] %}
+          <span class="badge text-bg-{{ c }}">{{ q.status }}</span></td>
+        <td class="text-center">
+          {% for a in q.attempts %}{% set p = (a.frac*100)|round|int %}<span class="badge attempt-badge me-1 text-bg-{{ 'success' if p == 100 else ('warning' if p > 0 else 'danger') }}">{{ p }}%</span>{% endfor %}
+          {% if not q.attempts %}<span class="text-muted">&mdash;</span>{% endif %}
+        </td>
+        <td class="text-center">{{ q.available|pts }}<span class="text-muted">/{{ q.spec.points|pts }}</span></td>
+        <td class="text-center"><strong>{{ q.awarded|pts }}</strong>/{{ q.spec.points|pts }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><th colspan="5" class="text-end">Total points:</th>
+      <th class="text-center">{{ inst.awarded|pts }}/{{ inst.total_points|pts }}</th></tr></tfoot>
+  </table>
+  </div>
+  {% if not inst.finished %}
+  <div class="card-footer text-end">
+    <form method="post" action="{{ url_for('finish', iid=inst.id) }}"
+          onsubmit="return confirm('Finish the assessment? You will not be able to submit any more answers.')">
+      <button class="btn btn-danger">Finish assessment</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+</div>
+<div class="col-lg-3">
+  {% include "_overview.html" %}
+</div>
+</div>
+{% endblock %}
+{% block scripts %}{% include "_timer_script.html" %}{% endblock %}

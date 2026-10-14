@@ -15,6 +15,7 @@ Early development. Currently implemented:
 - `rag_server.py` — local RAG server: indexes `src/context/*.txt`/`*.md` with local sentence-transformer embeddings and serves semantic retrieval over HTTP, so the Discord bot only sends the most relevant chunks to Gemini instead of the whole brief.
 - `mcp_manager.py` — "MCP Mommy", a local web dashboard + tray icon to start/stop/monitor the MCP servers, the RAG server, and the Discord bot.
 - `discord_bot.py` — a Discord bot ("Willow") that answers questions about your UBC status using local RAG retrieval over `src/context/` (falls back to the whole brief if the RAG server is down) via the Gemini API, replying with formatted embeds.
+- `prairie_practice/` + `prairie_practice_mcp.py` — **PrairiePractice**: a lightweight local recreation of the PrairieLearn/PrairieTest exam front end (no Docker), plus an MCP server that lets an agent generate practice exams with procedurally generated tests, share them as files, and read a per-error attempt tracker.
 - `canvas.py` — placeholder for upcoming Canvas integration.
 
 ## Requirements
@@ -124,8 +125,6 @@ Then open http://127.0.0.1:5055. It binds to `127.0.0.1` only and has **no authe
 
 The responsive dashboard keeps services in a single row-by-row list, with running/stopped totals, individual service controls, PID and uptime, and expandable recent logs (the latest 50 lines). Status refreshes every 2 seconds without closing logs or replacing focused controls. The daily UBC brief refreshes every 30 seconds, with its reference section expandable. Connection and action failures are displayed on the page; controls are disabled while disconnected or while an action is pending. Its copper-and-charcoal layout is in `templates/mcp_manager.html`, and the dashboard logo uses the existing `src/assets/profile.ico`.
 
-**Auto-open in Claude:** while MCP Mommy runs, it watches for the Claude desktop app being launched (`claude_autopen.py`). The first time a newly started Claude's window appears, it waits ~6 seconds for the app to load, brings the window to the front, presses **Ctrl+Shift+B**, types `http://127.0.0.1:5055` and presses Enter. It only types while the Claude window is the active window; if you click elsewhere midway, it stops rather than typing into another app. A Claude that was already running when MCP Mommy started is left alone. Set `CLAUDE_AUTOPEN_DASHBOARD=0` in the environment to turn it off; `CLAUDE_AUTOPEN_READY_DELAY` / `CLAUDE_AUTOPEN_SHORTCUT_DELAY` (seconds) tune the waits if your machine is slower. See what it did at http://127.0.0.1:5055/api/claude-autopen.
-
 Note: MCP servers use stdio transport, so a server started from MCP Mommy isn't itself "connected" to an MCP client (Claude Desktop/VS Code still launch their own instance via `command`/`args`). MCP Mommy is a process supervisor/log viewer for local development, not an MCP client.
 
 **Important limitation:** MCP Mommy's `ubc-mcp`/`google-tasks-mcp` processes are a **separate, independent set** from whatever Claude Desktop spawned itself. Its Start/Stop/Restart buttons only affect its own copies — they do **not** restart or otherwise touch the instance Claude Desktop is actually talking to over its own stdio pipes. If the live Claude-connected `ubc-mcp` gets into a bad state (e.g. a dead browser session), restarting it from the dashboard won't fix it; you need to either rely on `restart_browser`/the self-healing driver (see below) or restart Claude Desktop itself so it respawns its own copy.
@@ -171,6 +170,31 @@ Setup:
 
 **Cost control:** uses Gemini Flash by default (cheapest/fastest tier, has a free tier too, override with `DISCORD_BOT_MODEL`), only responds to DMs/@mentions (not every message in a channel), keeps no conversation history (single-turn per message), and sends only the top few RAG-retrieved chunks per question instead of a growing/whole-brief context. Check [Google AI Studio's usage/billing page](https://aistudio.google.com/) to confirm actual spend for your usage pattern.
 
+### PrairiePractice (PrairieTest-style practice exams)
+
+A local web app that looks and works like a UBC PrairieTest coding exam: assessment overview, timer, an Ace code editor (`solution.py`), **Save & Grade** / **Save only**, submission panels with per-test results, and a points sidebar. Only the front end is recreated; grading runs locally in Python, and nothing from PrairieLearn itself is installed. Problems are Python functions.
+
+```powershell
+python -m prairie_practice.app      # http://127.0.0.1:5070  (also started by MCP Mommy)
+```
+
+**Procedural tests, not token-by-token generation.** A problem is a small spec: a prompt, a reference solution, and a one-line type for each parameter (e.g. `"nums": "list[int(-50..50)](0..15)"`). Every time an exam starts, the tests are generated from a fresh random seed. They include boundary cases taken from the type ranges, and the reference solution computes the expected outputs, so the agent never writes test cases. The 25 built-in templates (loops, strings, lists, dicts, recursion, conditionals, nested lists, searching/sorting) randomize their own parameters, so `generate_practice_set` doesn't need the agent to write any problem text.
+
+**Attempts and penalties.** Every graded attempt is classified into error categories: syntax/indentation error, missing or misnamed function, wrong parameters, NameError/TypeError/IndexError/KeyError/…, infinite recursion, infinite loop, missing `return`, printed instead of returned, wrong return type, off-by-one, failed edge cases, wrong answer, and broken constraints ("must be recursive", "no loops", "no `sorted`"; checked statically, scores 0). A wrong attempt deducts the summed penalties of its categories from the question's value for later attempts (default cap 3 points per attempt). Your best attempt counts, and the question locks at 100% or when you run out of attempts. Errors you repeat get more expensive: by default every 5 occurrences of a category add 0.5 points to its penalty, up to 3. The **Error tracker** page shows error frequencies, per-topic error rates and recent attempts, and lets you edit every penalty value.
+
+**Sharing.** Each set is saved as `prairie_practice/sets/<title>-<id>.ubcprac.json`. Anyone running this app can import it from the Assessments page or with `import_practice_set`. Shared files contain reference solutions that run locally to generate tests, so only import files from people you trust.
+
+MCP tools (`python prairie_practice_mcp.py`, already registered for Claude Code in `.mcp.json`):
+
+- `generate_practice_set(title, count, topics, difficulty, target_weak_topics, time_limit_min, max_attempts)` — build an exam from templates; `target_weak_topics` weights topic choice by your tracked error rate.
+- `create_custom_problem(title, function, prompt, inputs, reference, constraints, edge_cases, set_id, ...)` — add a custom question from a compact spec; the reference solution is validated against the generated tests.
+- `list_problem_templates` / `list_practice_sets` / `export_practice_set` / `import_practice_set`
+- `get_error_stats` / `get_attempt_history` — what you get wrong most, by category and topic.
+- `set_error_penalty(category, points)` / `configure_adaptive_penalties(every, step, cap, max_per_attempt)`
+- `open_practice_app(open_browser, set_id)` — start the app if needed and open it.
+
+**Security notes:** binds to 127.0.0.1 with no authentication. Submitted code runs as ordinary Python in a subprocess on your machine; isolated mode (`-I`) and timeouts only guard against accidents, not malicious code.
+
 ## Project Structure
 
 ```
@@ -180,8 +204,17 @@ google_tasks_mcp.py # MCP server: Google Tasks
 gmail_mcp.py        # MCP server: read-only Gmail, restricted to ALLOWED_SENDERS
 rag_server.py       # Local RAG server: retrieval over src/context/ for discord_bot.py
 mcp_manager.py      # "MCP Mommy": dashboard + tray icon to start/stop/monitor everything below
-claude_autopen.py   # used by mcp_manager.py: opens the dashboard in Claude when Claude launches
 discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + RAG-backed UBC status Q&A
+prairie_practice_mcp.py # MCP server: generate/share practice exams, read the error tracker
+prairie_practice/   # PrairieTest-style practice exam app
+  app.py            # Flask web UI (PrairieLearn-style pages in templates/)
+  problems.py       # built-in problem templates + spec validation
+  dsl.py            # input type language -> procedural test inputs
+  grader.py         # runs code in a subprocess, classifies errors
+  runner.py         # subprocess side of the grader
+  store.py          # SQLite: sets, exam instances, attempts, error log, penalties
+  sets/             # shareable .ubcprac.json files
+  data/             # practice.db + app.log (gitignored)
 links.json          # saved platform shortcuts (gitignored, created by save_link)
 mcp-files/          # files downloaded via download_file (gitignored, e.g. a Canvas syllabus)
 google_token.json   # Google Tasks OAuth refresh token (gitignored, created by --auth)

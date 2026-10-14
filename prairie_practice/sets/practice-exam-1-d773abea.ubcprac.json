@@ -1,0 +1,145 @@
+{
+  "format": "ubc-practice/1",
+  "title": "Practice Exam 1",
+  "description": "",
+  "settings": {
+    "time_limit_min": 50,
+    "max_attempts": 5,
+    "language": "python"
+  },
+  "questions": [
+    {
+      "title": "Count vowels",
+      "function": "count_vowels",
+      "inputs": {
+        "s": "str(0..20, text)"
+      },
+      "prompt": "Write `count_vowels(s)` that returns the number of vowels (`a e i o u`,\nupper or lower case) in the string `s`.",
+      "reference": "def count_vowels(s):\n    return sum(1 for c in s.lower() if c in \"aeiou\")\n",
+      "topic": "strings",
+      "difficulty": 1,
+      "template": "count_vowels",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "starter": "def count_vowels(s):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "count_vowels('jR')",
+          "result": "0"
+        },
+        {
+          "call": "count_vowels('YjPeiebKLRfVknUwYh')",
+          "result": "4"
+        },
+        {
+          "call": "count_vowels('')",
+          "result": "0"
+        }
+      ]
+    },
+    {
+      "title": "Group words by length",
+      "function": "group_by_length",
+      "inputs": {
+        "words": "list[word](0..10)"
+      },
+      "prompt": "Write `group_by_length(words)` that returns a dictionary mapping each word\nlength (an `int`) to the list of words with that length, in the order they\nappear in `words` (duplicates included).",
+      "reference": "def group_by_length(words):\n    d = {}\n    for w in words:\n        d.setdefault(len(w), []).append(w)\n    return d\n",
+      "topic": "dicts",
+      "difficulty": 2,
+      "template": "group_by_length",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "starter": "def group_by_length(words):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "group_by_length(['lemon', 'ocean', 'dog'])",
+          "result": "{5: ['lemon', 'ocean'], 3: ['dog']}"
+        },
+        {
+          "call": "group_by_length(['ubc', 'stone', 'vancouver', 'orbit', 'graph', 'node', 'cloud', 'bridge', 'berry'])",
+          "result": "{3: ['ubc'], 5: ['stone', 'orbit', 'graph', 'cloud', 'berry'], 9: ['vancouver'], 4: ['node'], 6: ['bridge']}"
+        },
+        {
+          "call": "group_by_length([])",
+          "result": "{}"
+        }
+      ]
+    },
+    {
+      "title": "Top scorer",
+      "function": "top_scorer",
+      "inputs": {
+        "scores": "dict[word,int(0..10)](1..8)"
+      },
+      "prompt": "`scores` maps student names to scores. Write `top_scorer(scores)` that returns\nthe name with the highest score. If several names tie, return the one that\ncomes first alphabetically. `scores` is never empty.",
+      "reference": "def top_scorer(scores):\n    best = max(scores.values())\n    return min(name for name in scores if scores[name] == best)\n",
+      "topic": "dicts",
+      "difficulty": 2,
+      "template": "top_scorer",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "starter": "def top_scorer(scores):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "top_scorer({'ubc': 0, 'sky': 10, 'berry': 10, 'stone': 0, 'salmon': 7, 'rain': 7, 'exam': 6, 'forest': 3})",
+          "result": "'berry'"
+        },
+        {
+          "call": "top_scorer({'salmon': 0})",
+          "result": "'salmon'"
+        },
+        {
+          "call": "top_scorer({'exam': 9})",
+          "result": "'exam'"
+        }
+      ]
+    },
+    {
+      "title": "Binary search",
+      "function": "binary_search",
+      "inputs": {
+        "nums": "sortedlist[int(0..20)](0..12)",
+        "target": "int(0..20)"
+      },
+      "constraints": {
+        "forbid_builtins": [
+          "index"
+        ]
+      },
+      "prompt": "`nums` is sorted in increasing order with no duplicates. Write\n`binary_search(nums, target)` that returns the index of `target` in `nums`,\nor `-1` if it is not present. Do not use `list.index`.",
+      "reference": "def binary_search(nums, target):\n    lo, hi = 0, len(nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1\n",
+      "topic": "searching_sorting",
+      "difficulty": 2,
+      "template": "binary_search",
+      "points": 10,
+      "num_tests": 12,
+      "visible_failures": 3,
+      "edge_cases": [],
+      "starter": "def binary_search(nums, target):\n    # TODO: your code here\n    pass\n",
+      "examples": [
+        {
+          "call": "binary_search([1, 4, 5, 8, 9, 11, 14, 17, 18, 19], 20)",
+          "result": "-1"
+        },
+        {
+          "call": "binary_search([6, 9, 12, 19], 11)",
+          "result": "-1"
+        },
+        {
+          "call": "binary_search([], 0)",
+          "result": "-1"
+        }
+      ]
+    }
+  ]
+}
