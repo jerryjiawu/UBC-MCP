@@ -30,6 +30,10 @@
           </div>
           <div class="card-body overflow-x-auto question-body">
             {{ q.spec.prompt|md }}
+            {% if q.spec.signature %}
+              <p class="mb-1"><strong>Required function header:</strong></p>
+              <pre class="bg-light border rounded p-2"><code>{{ q.spec.signature }}</code></pre>
+            {% endif %}
             {% if q.spec.constraints %}
               <div class="alert alert-warning">
                 <strong>Restrictions (checked by the autograder; violations score 0%):</strong>
@@ -390,7 +394,7 @@
 <script>
   $(function () {
     new window.PLFileEditor("q{{ qn }}", {
-      originalContents: "{{ q.spec.starter|b64 }}",
+      originalContents: "",
       currentContents: "{{ q.code|b64 }}",
       readOnly: {{ "true" if closed else "false" }},
       aceMode: "{{ 'ace/mode/c_cpp' if is_c else 'ace/mode/python' }}",

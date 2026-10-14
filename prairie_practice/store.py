@@ -136,6 +136,8 @@ def _slug(s):
 
 def save_set(title, questions, time_limit_min=50, max_attempts=5, description="", set_id=None):
     set_id = set_id or uuid.uuid4().hex[:8]
+    for q in questions:
+        q.pop("starter", None)  # no starter code: the editor always opens empty
     languages = sorted({q.get("language", "python") for q in questions})
     data = {"format": FORMAT, "title": title, "description": description,
             "settings": {"time_limit_min": int(time_limit_min), "max_attempts": int(max_attempts),
@@ -200,7 +202,8 @@ def delete_set(set_id):
         conn.execute("DELETE FROM sets WHERE id=?", (set_id,))
 
 
-def export_set(set_id, out_dir=SETS_DIR):
+def export_set(set_id, out_dir=None):
+    out_dir = out_dir or SETS_DIR  # looked up at call time, not frozen at import
     data = get_set(set_id)
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"{_slug(data['title'])}-{set_id}.ubcprac.json")
@@ -327,7 +330,7 @@ def question_state(iid, qidx, spec, max_attempts):
             "used": used, "max_attempts": max_attempts,
             "attempts_left": (max_attempts - used) if max_attempts else None,
             "locked": locked, "complete": complete, "status": status, "saved_pending": saved_pending,
-            "code": draft["code"] if draft else (rows[-1]["code"] if rows else spec["starter"])}
+            "code": draft["code"] if draft else (rows[-1]["code"] if rows else "")}
 
 
 def save_draft(iid, qidx, code):

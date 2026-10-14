@@ -27,7 +27,6 @@
       "visible_failures": 3,
       "function": "main",
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "stdin": "90.6\n",
@@ -58,7 +57,6 @@
       "visible_failures": 3,
       "function": "main",
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "stdin": "139\n",
@@ -89,7 +87,6 @@
       "visible_failures": 3,
       "function": "main",
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "stdin": "208\n",

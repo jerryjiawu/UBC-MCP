@@ -1,69 +1,53 @@
-UBC BRIEF — updated Tue Oct 13  9:44 PM PDT
+UBC BRIEF — updated Wed Oct 14  10:41 AM PDT
 
 >> DO NEXT
- 1. MATH 100 ComPAIR #1 self-reflection — 15 min — closes TONIGHT 11:59 PM (~2h left), unconfirmed done
- 2. iPeer 1 (Practice) Eval — 10 min — overdue since 8 AM today; late to Oct 19, -2%/day now accruing
- 3. PHYS 157 Reading Quiz Wk6 — 10 min — due tomorrow (Wed) 8:00 AM, unsubmitted
- 4. Review for PHYS 157 Quiz 2 (Sat 3PM) + APSC 160 Midterm 1 (Sun 5PM) — both at ORCA
- 5. APSC 100 Studio Wk6: chair + poster (team N-2) — due Sat 2:00 PM, unsubmitted
- 6. APSC 160 WS16 — ~30 min — due Fri 11:59 PM, unsubmitted
- 7. PHYS 157 Written HW4 + MP HW4 (Mastering) — ~1h — due Fri 11:59 PM
- 8. CHEM 154 Stemble pre-lab Expt 12 — status unconfirmed — gates Mon Oct 19 lab, check now
-Tonight: #1 then #2. Wed-Thu evenings: #3, start #6/#7. By Fri: #6-#8 done,
-weekend becomes PHYS Quiz 2 + APSC 160 Midterm 1 study time.
+1. PHYS 157 Reading Quiz Week 6 (10 min) — overdue since 8 AM today, still unsubmitted.
+2. APSC 100 iPeer 1 (Practice) Eval (15 min) — 1 day late, 2%/day penalty accruing now.
+3. CHEM 154 Stemble pre-lab Expt 12 (30 min) — status unknown; gates Mon 2-5 PM in-lab Zoom.
+4. PHYS 157 Written Homework 4 (1 hr) — due Fri Oct 16, 11:59 PM.
+5. APSC 160 WS16 (1-1.5 hr) — due Fri Oct 16, 11:59 PM.
+6. APSC 100 Studio Wk6: Chair + Poster (varies, team) — due Sat Oct 17, 2:00 PM; check in with team now.
+7. PrairieTest: register for Lab Quiz 4 (5 min) — window Oct 26-31 just opened, not yet booked.
+8. Monday Oct 19, 8 AM cluster (6 items, ~2-3 hr) — video pitch, ComPAIR, 3 quizzes; start this weekend.
+Today: clear #1-#3 (under an hour). Thu/Fri: WH4 + WS16 before Fri midnight. Weekend: finish the studio submission with your team, then get a head start on the Monday cluster.
 
 [!] BLOCKERS — no feed will ever remind you
- PrairieLearn pre-lab (Lab Quiz 4)  -> ORCA window Oct 26-31, not yet visible on PrairieLearn
- Stemble pre-lab Expt 12            -> CHEM 154 Zoom lab Mon Oct 19, 2-5 PM, unconfirmed
- PrairieTest reg (Lab Quiz 4)       -> window just opened for booking tonight, not yet reserved
- ORCA reg (PHYS 157 Quiz 2)         -> already booked Sat Oct 17, 3 PM, ICCS 014 — OK
+Stemble pre-lab Expt 12 -> CHEM 154 in-lab, Mon Oct 19, 2-5 PM Zoom. Status: unconfirmed.
+PrairieLearn pre-lab, APSC 160 -> no window open now; Lab Quiz 4 pre-lab not visible yet (opens ~Oct 26).
+PrairieTest reg, APSC 160 Lab Quiz 4 (window Oct 26-31) -> NOT booked yet (checked live just now).
+Already booked (checked live): APSC 160 Midterm 1 Sun Oct 18, 5 PM, ICCS 008 · PHYS 157 Quiz 2 Sat Oct 17, 3 PM, ICCS 014.
 
 [!] OVERDUE
- iPeer 1 (Practice) Eval — due 8 AM today, unsubmitted; late to Oct 19, -2%/day
- APSC 160 Lab Quiz 3 — Canvas shows unsubmitted (sat in person Oct 7); known PrairieLearn sync lag
- APSC 160 Lab Quiz 2 — Canvas shows unsubmitted (sat Oct 2); same lag, ~11 days, not escalated
- PHYS 157 MP Homework 1 — due Sep 25, unsubmitted, no late accepted — locked 0, not actionable
+PHYS 157 Reading Quiz Week 6 — due today 8 AM, still unsubmitted.
+APSC 100 iPeer 1 (Practice) Eval — due Tue Oct 13 8 AM, still unsubmitted; late accepted til Mon Oct 19 8 AM, 2%/day.
+PHYS 157 MP Homework 1 — due Sep 25, unsubmitted, no late accepted — locked 0, unchanged.
+APSC 160 Lab Quiz 3 — Canvas shows unsubmitted (already sat in person Oct 7); normal PrairieLearn sync lag, not yet worth escalating.
 
-TODAY — Tuesday Oct 13
- CHEM 154 11:00-12:30 CHEM B250 · PHYS 157 tutorial 14:00-15:00 HEBB 218 · APSC 160 15:30-17:00 WESB 100
- Due: MATH 100 ComPAIR #1 self-reflection phase, 11:59 PM (see DO NEXT #1)
+TODAY — Wed Oct 14
+Classes: PHYS 157 lec 9-10 AM HEBB 100 (passed) · MATH 100 large class 12-2 PM IRC 2 (WW6 opened 12:01 AM) · APSC 160 lab 4-6 PM CEME 2212.
+Deadlines: Reading Quiz Week 6 due 8 AM (overdue, see above) · WS15 due 11:59 PM — already submitted & graded 20/20, nothing to do.
 
 MONDAY IS THE PILEUP — Oct 19
- 8:00 AM — Cardboard Chair Video Pitch, CAD2 ComPAIR comparisons, iPeer late (last day), M2-W7 quizzes x2, Week7 videos x3 — all due together
- 2:00-5:00 PM — CHEM 154 in-lab Expt 12 (Zoom) — join within 10 min or marked absent
- 11:59 PM — CHEM 154 Assignment #5: Polymers due
+8:00 AM — six Canvas items close at once: Cardboard Chair Video Pitch (ComPAIR, team), CAD 2 Keychain ComPAIR, M2-W7 Sustainability + CLD quizzes/videos, Materials Eng video+quiz, Learning-7-Quiz-Stress (bonus); iPeer late window also closes here.
+8-9 AM APSC 100 lecture, LIFE 2201 (Class A team quiz — any device/notes out = whole team scores 0); 10 AM-12 PM studio, EDC 301, team N-2.
+2-5 PM CHEM 154 in-lab (Expt 12), Zoom — join within 10 min or marked absent; gated by the Stemble blocker above.
+11:59 PM CHEM 154 Assignment #5: Polymers due (Achieve).
 --- reference ----------------------------------------------------------
 
 NEXT 7 DAYS
- Wed Oct14  PHYS lec 9-10 HEBB100 / MATH large 12-2 IRC2 / APSC160 lab 4-6 CEME2212
-            PHYS Reading Quiz Wk6 due 8 AM — unsubmitted · WW6 opens 12:01 AM
-            APSC160 WS15 due 11:59 PM — graded 20/20, done
- Thu Oct15  MATH small 1-2 BUCHB313 / CHEM lec 11-12:30 CHEMB250 / APSC160 lec 3:30-5 WESB100
-            WRDS150 19:00-22:00 LIFE2109 / MATH WW5 due — already 100%
- Fri Oct16  APSC100 lec 8-9 LIFE2201 / PHYS lec 9-10 HEBB100
-            APSC160 WS16, PHYS Written HW4, PHYS MP HW4 — all due 11:59 PM, unsubmitted
-            APSC160 Midterm1 window opens (Oct16-21) — already booked for Sun
- Sat Oct17  APSC100 Studio Wk6 chair+poster due 2:00 PM (team, unsubmitted)
-            PHYS157 Quiz2 — ORCA 3:00 PM ICCS014, 50 min (booked)
- Sun Oct18  APSC160 Midterm1 — ORCA 5:00 PM ICCS008, 1h50 (booked)
-            CHEM Stemble pre-lab Expt12 due — unconfirmed, gates Mon lab
- Mon Oct19  see pileup above
+Wed Oct 14  PHYS Reading Quiz Wk6 8 AM (overdue) · WS15 11:59 PM (done, 20/20)
+Thu Oct 15  MATH small class 1-2 PM · CHEM lec 11-12:30 · APSC160 lec 3:30-5 · WRDS 7-10 PM
+Fri Oct 16  APSC100 lec 8-9 AM · PHYS lec 9-10 AM · WS16 11:59 PM (open) · PHYS WH4 11:59 PM (open) · Learning-6/M2-W6-Profession 8 AM (done)
+Sat Oct 17  APSC100 Studio Wk6 Chair+Poster 2 PM (team, open) · PHYS Quiz 2 ORCA 3 PM (booked)
+Sun Oct 18  APSC160 Midterm 1 ORCA 5 PM (booked) · CHEM Stemble pre-lab Expt 12 due (unconfirmed)
+Mon Oct 19  see PILEUP above · CHEM Assignment 5 Polymers 11:59 PM (open)
+Tue Oct 20  APSC 160 pre-class material due
+Wed Oct 21  MATH 100 MIDTERM, in class 12-2 PM IRC 2 (calendar shows 11:59 PM — real time is in-lecture) · WS17 11:59 PM (open)
+(WW6 due Oct 22, 11:59 PM — opened today, 0/14, just outside this 7-day window)
 
 STATUS
- MATH WeBWorK (live, 9:44 PM): WW1 100%(25/25) WW2 100%(27/27) WW3 100%(26/26)
-   WW4 100%(24/24) WW5 100%(28/28) — all closed. Diagnostic 76%. Tutorial
-   0/7 (optional, open to Dec7). WW6 opens Oct14 12:01 AM, WW7 opens Oct21.
- APSC160 worksheets: WS1-6,8-15 all full marks (WS15 newly confirmed 20/20
-   this run). WS7 still graded/score-null anomaly — carried forward from
-   last run, not re-checked tonight, still needs a direct Canvas UI look.
-   Lab attendance (carried forward, not re-checked): L0 50/50, L1 3/3,
-   L2 0/3 (unresolved), L3 3/3.
- PrairieTest (live this run): Quiz2 + Midterm1 reservations reconfirmed
-   unchanged. Lab Quiz 4 reservation window is NEW — opened for booking
-   as of tonight, nothing reserved yet.
- Google Tasks (explicit list id TXM0dVpETkdhd1k3NFpqSg): healthy, full
-   coursework list returned, no invalid_grant.
- Both ICS feeds (Canvas + Brightspace): read cleanly this run, no login.
- Could not reach this run: Stemble (no MCP tool reads it); Brightspace/
-   ComPAIR completion status (no tool) — both left as unconfirmed above,
-   never assumed done.
+MATH WeBWorK (live, page generated 10:38 AM PDT): WW1-5 all 100% closed · WW6 0% (0/14), just opened · WW7 opens Oct 21 · Diagnostic 76% closed.
+APSC 160 worksheets (live): WS1-6, WS8-15 all full marks. WS7 still graded with a blank/null score (50 pts, attempt 4) — unresolved anomaly, needs a direct Canvas UI check.
+Lab attendance: Lab 1 3/3, Lab 2 0/3 (unresolved, worth a check), Lab 3 3/3, Lab 4-8 not due yet. Lab Quiz 2 now graded 100/100 (sync caught up since last run). Lab Quiz 3 still unsubmitted (normal lag).
+Google Tasks: list_tasks on explicit id TXM0dVpETkdhd1k3NFpqSg returned ~100 items — healthy, not the personal list.
+All 5 required sources read successfully this run (both ICS feeds, Canvas scan, Google Tasks, WeBWorK); PrairieTest also checked live to confirm the blockers above.

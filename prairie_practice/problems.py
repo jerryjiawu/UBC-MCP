@@ -608,8 +608,8 @@ def normalize(spec):
             raise ValueError(f"input {name!r}: {e}") from e
     _defaults(spec)
     _check_files(spec)
-    params = ", ".join(spec["inputs"])
-    spec.setdefault("starter", f"def {spec['function']}({params}):\n    # TODO: your code here\n    pass\n")
+    spec.pop("starter", None)  # students start from an empty editor
+    spec["signature"] = f"def {spec['function']}({', '.join(spec['inputs'])}):"
     # Validation run doubles as example generation.
     tests = build_tests(spec, seed="examples")
     spec["examples"] = [dict(_example_files(t), call=call_str(spec["function"], t["args"]),
@@ -654,7 +654,6 @@ def _defaults(spec):
     spec.setdefault("edge_cases", [])
 
 
-C_HEADER = "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\n"
 _C_TYPES = re.compile(r"^(const )?(int|double|char)(\[\](\[\d+\])?|\*)?$")
 
 
@@ -706,14 +705,9 @@ def _normalize_c(spec):
             raise ValueError(f"input {name!r}: {e}") from e
     _check_files(spec)
 
-    if spec["kind"] == "program":
-        spec.setdefault("starter", C_HEADER + "int main(void)\n{\n    /* TODO: your code here */\n\n"
-                                              "    return 0;\n}\n")
-    else:
-        default_ret = {"void": "", "int": "    return 0;\n", "double": "    return 0.0;\n",
-                       "char": "    return ' ';\n"}
-        spec.setdefault("starter", C_HEADER + c_grader.prototype(spec) + "\n{\n    /* TODO: your code here */\n\n"
-                        + default_ret[spec["returns"]] + "}\n")
+    spec.pop("starter", None)  # students start from an empty editor
+    if spec["kind"] == "function":
+        spec["signature"] = c_grader.prototype(spec)
     tests = build_tests(spec, seed="examples")
     picks = _example_picks(tests)
     if spec["kind"] == "program":

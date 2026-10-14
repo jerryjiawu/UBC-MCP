@@ -39,7 +39,6 @@
       "inputs": {
         "data": "list[int(0..99)](0..11)"
       },
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nvoid reverse_array(int data[], int size)\n{\n    /* TODO: your code here */\n\n}\n",
       "examples": [
         {
           "call": "reverse_array({19, 94, 26, 58, 93, 99, 72, 81, 59}, 9)",
@@ -53,7 +52,8 @@
           "call": "reverse_array({}, 0)",
           "result": "data = {}"
         }
-      ]
+      ],
+      "signature": "void reverse_array(int data[], int size)"
     },
     {
       "title": "Sum of digits",
@@ -91,7 +91,6 @@
       "inputs": {
         "n": "int(0..999999)"
       },
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint sum_digits(int n)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "call": "sum_digits(279447)",
@@ -105,7 +104,8 @@
           "call": "sum_digits(0)",
           "result": "returns 0"
         }
-      ]
+      ],
+      "signature": "int sum_digits(int n)"
     },
     {
       "title": "Count above average",
@@ -138,7 +138,6 @@
       "inputs": {
         "data": "list[int(0..20)](1..12)"
       },
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint count_above_average(const int data[], int size)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "call": "count_above_average({7, 8, 10, 15, 3, 3, 0, 4, 18, 11, 14}, 11)",
@@ -152,7 +151,8 @@
           "call": "count_above_average({9}, 1)",
           "result": "returns 0"
         }
-      ]
+      ],
+      "signature": "int count_above_average(const int data[], int size)"
     },
     {
       "title": "Convert to upper case",
@@ -184,7 +184,6 @@
       "inputs": {
         "str": "str(0..16, text)"
       },
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nvoid to_upper_case(char str[])\n{\n    /* TODO: your code here */\n\n}\n",
       "examples": [
         {
           "call": "to_upper_case(\" ZPfSoeIsbmM U\")",
@@ -198,7 +197,8 @@
           "call": "to_upper_case(\"\")",
           "result": "str = \"\""
         }
-      ]
+      ],
+      "signature": "void to_upper_case(char str[])"
     },
     {
       "title": "Row with the largest sum",
@@ -231,7 +231,6 @@
       "inputs": {
         "grid": "grid[int(-9..9)](1..6, 5..5)"
       },
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint max_row(const int grid[][5], int rows)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "call": "max_row({{2, -1, -2, 0, -9}, {-2, -2, -9, 2, 3}, {-8, -2, -8, -9, -7}, {-5, 6, -1, 5, -3}, {7, -7, 4, 3, -1}}, 5)",
@@ -245,7 +244,8 @@
           "call": "max_row({{-7, 3, -6, 8, -1}}, 1)",
           "result": "returns 0"
         }
-      ]
+      ],
+      "signature": "int max_row(const int grid[][5], int rows)"
     }
   ]
 }

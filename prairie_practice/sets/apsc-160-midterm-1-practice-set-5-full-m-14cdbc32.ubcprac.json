@@ -27,7 +27,6 @@
       "visible_failures": 3,
       "function": "main",
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "stdin": "2.34\n",
@@ -65,7 +64,6 @@
       "visible_failures": 3,
       "inputs": {},
       "function": "main",
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "files": {
@@ -111,7 +109,6 @@
       "visible_failures": 3,
       "function": "main",
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "stdin": "11\n5\n",
@@ -168,7 +165,6 @@
         "n": "int(0..100000)"
       },
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint binaryOnes(int n)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "call": "binaryOnes(45917)",
@@ -182,7 +178,8 @@
           "call": "binaryOnes(0)",
           "result": "returns 0"
         }
-      ]
+      ],
+      "signature": "int binaryOnes(int n)"
     }
   ]
 }

@@ -56,7 +56,6 @@
         "minutes": "int(0..400)"
       },
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\ndouble parkingFee(int minutes)\n{\n    /* TODO: your code here */\n\n    return 0.0;\n}\n",
       "examples": [
         {
           "call": "parkingFee(332)",
@@ -70,7 +69,8 @@
           "call": "parkingFee(0)",
           "result": "returns 0"
         }
-      ]
+      ],
+      "signature": "double parkingFee(int minutes)"
     },
     {
       "title": "Q3 \u00b7 digitalRoot function (nested loops)",
@@ -114,7 +114,6 @@
         "n": "int(0..2000000)"
       },
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint digitalRoot(int n)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "call": "digitalRoot(451602)",
@@ -128,7 +127,8 @@
           "call": "digitalRoot(0)",
           "result": "returns 0"
         }
-      ]
+      ],
+      "signature": "int digitalRoot(int n)"
     },
     {
       "title": "Q4 \u00b7 Hollow Box (program with your own functions)",
@@ -152,7 +152,6 @@
       "visible_failures": 3,
       "function": "main",
       "file_data": {},
-      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
       "examples": [
         {
           "stdin": "36\n3\n-1\n2\n",
