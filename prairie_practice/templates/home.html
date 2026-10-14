@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% from "_macros.html" import scorebar %}
-{# pages/studentAssessments/studentAssessments.html.tsx #}
 {% block title %}Assessments — {{ COURSE_LABEL }}{% endblock %}
 {% block content %}
 <div class="card mb-4">
@@ -8,93 +7,94 @@
     <h1>Assessments</h1>
   </div>
 
+  {% if not sets %}
+  <div class="card-body text-muted">
+    No exams yet. Ask your AI to make one (MCP tool <code>generate_practice_set</code>), or import a shared file below.
+  </div>
+  {% else %}
   <div class="table-responsive">
-    <table class="table table-sm table-hover" aria-label="Assessments">
+    <table class="table table-hover align-middle mb-0" aria-label="Assessments">
       <thead>
         <tr>
           <th style="width: 1%"><span class="visually-hidden">Label</span></th>
-          <th><span class="visually-hidden">Title</span></th>
-          <th class="text-center">Available credit</th>
+          <th>Exam</th>
+          <th>Status</th>
           <th class="text-center">Score</th>
+          <th class="text-end"><span class="visually-hidden">Actions</span></th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <th colspan="4" scope="rowgroup" data-testid="assessment-group-heading">Exams</th>
-        </tr>
         {% for s in sets|reverse %}
         <tr>
-          <td class="align-middle" style="width: 1%">
-            <span class="badge color-red1" data-testid="assessment-set-badge">E{{ loop.index }}</span>
+          <td><span class="badge color-red1">E{{ loop.index }}</span></td>
+          <td>
+            {{ s.title }}
+            <div class="small text-muted">
+              {{ s.questions }} question{{ "s" if s.questions != 1 }} &middot;
+              {{ {"c": "C", "python": "Python"}.get(s.settings.language, s.settings.language) }} &middot;
+              {{ s.topics|join(", ") }}
+            </div>
           </td>
-          <td class="align-middle">
-            {% if s.latest_instance %}
-              <a href="{{ url_for('instance', iid=s.latest_instance) }}">{{ s.title }}</a>
+          <td>
+            {% if s.state == "in_progress" %}
+              <span class="badge text-bg-info">In progress</span>
+              {% if s.remaining_min is not none %}<div class="small text-muted">{{ s.remaining_min }} min left</div>{% endif %}
+            {% elif s.state == "finished" %}
+              <span class="badge text-bg-secondary">Finished</span>
+              <div class="small text-muted">{% if s.time_expired %}time ran out{% else %}submitted{% endif %} {{ s.finished_at|friendly }}</div>
             {% else %}
-              <form method="post" action="{{ url_for('start', set_id=s.id) }}" class="d-inline">
-                <button type="submit" class="btn btn-link p-0 align-baseline">{{ s.title }}</button>
-              </form>
+              <span class="text-muted">Not started</span>
             {% endif %}
           </td>
-          <td class="text-center align-middle">
-            {% if s.open_instance %}100% until {{ s.open_deadline|friendly if s.open_deadline else "" }}{% else %}100%{% endif %}
+          <td class="text-center">
+            {% if s.state == "not_started" %}&mdash;{% else %}{{ scorebar(s.latest_score) }}{% endif %}
           </td>
-          <td class="text-center align-middle">
-            {% if s.latest_instance is none %}Not started{% else %}{{ scorebar(s.latest_score) }}{% endif %}
+          <td class="text-end text-nowrap">
+            {% if s.state == "in_progress" %}
+              <a class="btn btn-primary" href="{{ url_for('instance', iid=s.open_instance) }}">Continue</a>
+            {% else %}
+              <form class="d-inline" method="post" action="{{ url_for('start', set_id=s.id) }}">
+                <button class="btn btn-primary" title="Untimed practice">{{ "Retake" if s.state == "finished" else "Start" }}</button>
+              </form>
+              {% if s.settings.time_limit_min %}
+              <form class="d-inline" method="post" action="{{ url_for('start', set_id=s.id) }}">
+                <input type="hidden" name="timed" value="1">
+                <button class="btn btn-outline-primary" title="Closes automatically when time runs out, like a real exam">Timed ({{ s.settings.time_limit_min }} min)</button>
+              </form>
+              {% endif %}
+              {% if s.state == "finished" %}
+                <a class="btn btn-link btn-sm" href="{{ url_for('instance', iid=s.latest_instance) }}">Review</a>
+              {% endif %}
+            {% endif %}
+            <div class="dropdown d-inline">
+              <button class="btn btn-sm btn-ghost" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More">
+                <i class="fa fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ url_for('export', set_id=s.id) }}">Download share file</a></li>
+                <li>
+                  <form method="post" action="{{ url_for('delete', set_id=s.id) }}"
+                        onsubmit="return confirm('Delete this exam? Past attempts stay in the gradebook.')">
+                    <button class="dropdown-item text-danger">Delete exam</button>
+                  </form>
+                </li>
+              </ul>
+            </div>
           </td>
         </tr>
         {% endfor %}
-        {% if not sets %}
-        <tr><td colspan="4" class="text-muted">No exams yet. Ask your AI to generate one (MCP tool <code>generate_practice_set</code>) or import a shared file below.</td></tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="card mb-4">
-  <div class="card-header bg-secondary text-white d-flex align-items-center">
-    <h2>Practice sets</h2>
-  </div>
-  {% if sets %}
-  <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0" aria-label="Practice sets">
-      <thead>
-        <tr>
-          <th>Exam</th><th>Language</th><th>Topics</th><th class="text-center">Questions</th>
-          <th class="text-center">Time limit</th><th class="text-center">Attempts per question</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for s in sets|reverse %}
-        <tr>
-          <td class="align-middle">E{{ loop.index }}: {{ s.title }}</td>
-          <td class="align-middle">{{ {"c": "C", "python": "Python"}.get(s.settings.language, s.settings.language) }}</td>
-          <td class="align-middle">{% for t in s.topics %}<span class="badge color-gray1 me-1">{{ t }}</span>{% endfor %}</td>
-          <td class="text-center align-middle">{{ s.questions }}</td>
-          <td class="text-center align-middle">{% if s.settings.time_limit_min %}{{ s.settings.time_limit_min }} min{% else %}none{% endif %}</td>
-          <td class="text-center align-middle">{{ s.settings.max_attempts or "unlimited" }}</td>
-          <td class="text-end text-nowrap align-middle">
-            <form class="d-inline" method="post" action="{{ url_for('start', set_id=s.id) }}">
-              <button class="btn btn-primary btn-sm">New instance</button></form>
-            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('export', set_id=s.id) }}">Share file</a>
-            <form class="d-inline" method="post" action="{{ url_for('delete', set_id=s.id) }}"
-                  onsubmit="return confirm('Delete this practice set? Past attempts stay in the gradebook.')">
-              <button class="btn btn-sm btn-outline-danger">Delete</button></form>
-          </td>
-        </tr>
-      {% endfor %}
       </tbody>
     </table>
   </div>
   {% endif %}
-  <div class="card-footer">
-    <form method="post" action="{{ url_for('import_set') }}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
-      <label class="form-label mb-0" for="import-file">Import a shared practice set:</label>
-      <input class="form-control form-control-sm w-auto" id="import-file" type="file" name="file" accept=".json">
-      <button class="btn btn-sm btn-secondary">Import</button>
-    </form>
-    <small class="text-muted">Shared files include reference solutions that run on your computer to generate the tests. Only import files from people you trust.</small>
-  </div>
 </div>
+
+<details class="mb-4">
+  <summary class="text-muted">Import a shared exam file</summary>
+  <form method="post" action="{{ url_for('import_set') }}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center mt-2">
+    <input class="form-control form-control-sm w-auto" id="import-file" type="file" name="file" accept=".json" aria-label="Exam file">
+    <button class="btn btn-sm btn-secondary">Import</button>
+    <small class="text-muted w-100">Shared files include answer code that runs on your computer. Only import files from people you trust.</small>
+  </form>
+</details>
 {% endblock %}

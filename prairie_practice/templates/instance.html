@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import scorebar, exam_status, available_points, instance_points, time_limit_data, modal %}
+{% from "_macros.html" import scorebar, exam_status, available_points, instance_points, time_limit_data, modal, closed_banner %}
 {# pages/studentAssessmentInstance/studentAssessmentInstance.html.tsx #}
 {% block title %}{{ exam_label }} — {{ COURSE_LABEL }}{% endblock %}
 {% block head %}{{ time_limit_data(inst) }}{% endblock %}
@@ -40,6 +40,7 @@
 {% endblock %}
 
 {% block content %}
+{{ closed_banner(inst) }}
 <div class="card mb-4">
   <div class="card-header bg-primary text-white d-flex align-items-center">
     <h1>{{ exam_label }}: {{ inst.set.title }}</h1>

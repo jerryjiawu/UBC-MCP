@@ -54,6 +54,7 @@ def md(text):
             p = html.escape(" ".join(para.split()))
             p = re.sub(r"`([^`]+)`", r"<code>\1</code>", p)
             p = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", p)
+            p = re.sub(r"(?<![\w*])\*([^*\s][^*]*?)\*(?![\w*])", r"<em>\1</em>", p)
             out.append(f"<p>{p}</p>")
     return Markup("".join(out))
 
@@ -196,8 +197,9 @@ def assessments():
 
 @app.post("/set/<set_id>/start")
 def start(set_id):
+    """Start a new attempt, or continue the open one (so repeated clicks never duplicate)."""
     try:
-        iid = store.start_instance(set_id)
+        iid = store.start_or_resume(set_id, timed=request.form.get("timed") == "1")
     except (KeyError, ValueError, RuntimeError) as e:
         flash(str(e), "danger")
         return redirect(url_for("assessments"))

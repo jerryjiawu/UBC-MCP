@@ -54,3 +54,19 @@
   </div>
 </div>
 {%- endmacro %}
+
+{% macro closed_banner(inst) -%}
+{% if inst.finished %}
+<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert">
+  <div class="me-auto">
+    <strong>This exam is closed.</strong>
+    {% if inst.time_expired %}Its {{ inst.time_limit_min }}-minute time limit ran out at {{ inst.finished|friendly }}.
+    {% else %}It was finished at {{ inst.finished|friendly }}.{% endif %}
+    You can review your answers here, but you can't change them.
+  </div>
+  <form method="post" action="{{ url_for('start', set_id=inst.set_id) }}" class="m-0">
+    <button class="btn btn-primary btn-sm">Retake this exam</button>
+  </form>
+</div>
+{% endif %}
+{%- endmacro %}

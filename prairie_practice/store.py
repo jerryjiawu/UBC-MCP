@@ -172,13 +172,20 @@ def list_sets():
                         "latest_instance": inst["id"] if inst else None,
                         "open_instance": inst["id"] if inst and not inst["finished"] else None})
     for s in out:
+        s["state"] = "not_started"
         if s["latest_instance"]:
             inst = get_instance(s["latest_instance"])  # also closes it if its time ran out
             s["latest_score"] = inst["score_perc"]
+            s["latest_awarded"] = inst["awarded"]
             s["open_deadline"] = inst["deadline"] if not inst["finished"] else None
+            s["remaining_min"] = (inst["remaining_s"] + 59) // 60 if inst["remaining_s"] is not None else None
+            s["state"] = "finished" if inst["finished"] else "in_progress"
+            s["time_expired"] = inst["time_expired"]
+            s["finished_at"] = inst["finished"]
             if inst["finished"]:
                 s["open_instance"] = None
     return out
+
 
 
 def add_question(set_id, spec):
@@ -215,7 +222,26 @@ def import_set_data(data):
 
 # --------------------------------------------------------------- instances
 
-def start_instance(set_id):
+def open_instance_for(set_id):
+    """The set's unfinished attempt, if any (closing it first if its time ran out)."""
+    with db() as conn:
+        row = conn.execute("SELECT id FROM instances WHERE set_id=? AND finished IS NULL "
+                           "ORDER BY id DESC LIMIT 1", (set_id,)).fetchone()
+    if row and not get_instance(row["id"])["finished"]:
+        return row["id"]
+    return None
+
+
+def start_or_resume(set_id, timed=False):
+    """Continue the open attempt if there is one; otherwise start a new one.
+    Untimed unless `timed` (then the set's time limit applies)."""
+    iid = open_instance_for(set_id)
+    if iid is not None:
+        return iid
+    return start_instance(set_id, timed=timed)
+
+
+def start_instance(set_id, timed=True):
     data = get_set(set_id)
     seed = random.SystemRandom().randrange(1, 2**31)
     tests = [problems.build_tests(q, seed) for q in data["questions"]]
@@ -224,7 +250,7 @@ def start_instance(set_id):
         cur = conn.execute(
             "INSERT INTO instances (set_id, seed, started, finished, time_limit_min, max_attempts) "
             "VALUES (?, ?, ?, NULL, ?, ?)",
-            (set_id, seed, time.time(), s["time_limit_min"], s["max_attempts"]))
+            (set_id, seed, time.time(), s["time_limit_min"] if timed else 0, s["max_attempts"]))
         iid = cur.lastrowid
         for i, t in enumerate(tests):
             conn.execute("INSERT INTO instance_tests VALUES (?, ?, ?)", (iid, i, json.dumps(t)))
