@@ -1,0 +1,251 @@
+{
+  "format": "ubc-practice/1",
+  "title": "APSC 160 Practice Exam 1",
+  "description": "",
+  "settings": {
+    "time_limit_min": 50,
+    "max_attempts": 5,
+    "language": "c"
+  },
+  "questions": [
+    {
+      "title": "Reverse an array in place",
+      "function": "reverse_array",
+      "returns": "void",
+      "params": [
+        {
+          "name": "data",
+          "type": "int[]",
+          "input": "list[int(0..99)](0..11)"
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "size_of": "data"
+        }
+      ],
+      "prompt": "Write the function `reverse_array` that reverses the order of the `size`\nelements of `data` **in place** (modify the array; do not print anything).",
+      "reference": "void reverse_array(int data[], int size)\n{\n    for (int i = 0; i < size / 2; i++) {\n        int tmp = data[i];\n        data[i] = data[size - 1 - i];\n        data[size - 1 - i] = tmp;\n    }\n}\n",
+      "language": "c",
+      "topic": "arrays",
+      "difficulty": 2,
+      "template": "c_reverse_array",
+      "points": 10,
+      "kind": "function",
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "inputs": {
+        "data": "list[int(0..99)](0..11)"
+      },
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nvoid reverse_array(int data[], int size)\n{\n    /* TODO: your code here */\n\n}\n",
+      "examples": [
+        {
+          "call": "reverse_array({19, 94, 26, 58, 93, 99, 72, 81, 59}, 9)",
+          "result": "data = {59, 81, 72, 99, 93, 58, 26, 94, 19}"
+        },
+        {
+          "call": "reverse_array({23, 58, 14, 69, 26, 17, 17}, 7)",
+          "result": "data = {17, 17, 26, 69, 14, 58, 23}"
+        },
+        {
+          "call": "reverse_array({}, 0)",
+          "result": "data = {}"
+        }
+      ]
+    },
+    {
+      "title": "Sum of digits",
+      "function": "sum_digits",
+      "returns": "int",
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "input": "int(0..999999)"
+        }
+      ],
+      "edge_cases": [
+        [
+          0
+        ],
+        [
+          7
+        ],
+        [
+          10
+        ]
+      ],
+      "prompt": "Write the function `sum_digits` that returns the sum of the decimal digits of\nthe non-negative integer `n`. For example, `sum_digits(4096)` is `19`.",
+      "reference": "int sum_digits(int n)\n{\n    int sum = 0;\n    while (n > 0) {\n        sum += n % 10;\n        n /= 10;\n    }\n    return sum;\n}\n",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 1,
+      "template": "c_sum_digits",
+      "points": 10,
+      "kind": "function",
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "inputs": {
+        "n": "int(0..999999)"
+      },
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint sum_digits(int n)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "call": "sum_digits(279447)",
+          "result": "returns 33"
+        },
+        {
+          "call": "sum_digits(621365)",
+          "result": "returns 23"
+        },
+        {
+          "call": "sum_digits(0)",
+          "result": "returns 0"
+        }
+      ]
+    },
+    {
+      "title": "Count above average",
+      "function": "count_above_average",
+      "returns": "int",
+      "params": [
+        {
+          "name": "data",
+          "type": "const int[]",
+          "input": "list[int(0..20)](1..12)"
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "size_of": "data"
+        }
+      ],
+      "prompt": "Write the function `count_above_average` that returns how many elements of\n`data` are **strictly greater** than the average of all `size` elements.\n`size` is always at least 1. Careful: the average may not be a whole number.",
+      "reference": "int count_above_average(const int data[], int size)\n{\n    double sum = 0;\n    for (int i = 0; i < size; i++) {\n        sum += data[i];\n    }\n    double avg = sum / size;\n    int count = 0;\n    for (int i = 0; i < size; i++) {\n        if (data[i] > avg) {\n            count++;\n        }\n    }\n    return count;\n}\n",
+      "language": "c",
+      "topic": "arrays",
+      "difficulty": 2,
+      "template": "c_count_above_average",
+      "points": 10,
+      "kind": "function",
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "inputs": {
+        "data": "list[int(0..20)](1..12)"
+      },
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint count_above_average(const int data[], int size)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "call": "count_above_average({7, 8, 10, 15, 3, 3, 0, 4, 18, 11, 14}, 11)",
+          "result": "returns 5"
+        },
+        {
+          "call": "count_above_average({6, 16, 19, 14, 7, 4, 11, 3, 15, 19, 12, 3}, 12)",
+          "result": "returns 7"
+        },
+        {
+          "call": "count_above_average({9}, 1)",
+          "result": "returns 0"
+        }
+      ]
+    },
+    {
+      "title": "Convert to upper case",
+      "function": "to_upper_case",
+      "returns": "void",
+      "params": [
+        {
+          "name": "str",
+          "type": "char[]",
+          "input": "str(0..16, text)"
+        }
+      ],
+      "constraints": {
+        "forbid_builtins": [
+          "toupper"
+        ]
+      },
+      "prompt": "Write `to_upper_case` that converts every lowercase letter in the\nnull-terminated string `str` to uppercase, **in place**. Other characters are\nunchanged. Do not use `toupper` -- use the fact that `'a' - 'A'` is the\ndistance between lowercase and uppercase letters.",
+      "reference": "void to_upper_case(char str[])\n{\n    for (int i = 0; str[i] != '\\0'; i++) {\n        if (str[i] >= 'a' && str[i] <= 'z') {\n            str[i] = str[i] - 'a' + 'A';\n        }\n    }\n}\n",
+      "language": "c",
+      "topic": "strings",
+      "difficulty": 2,
+      "template": "c_to_upper",
+      "points": 10,
+      "kind": "function",
+      "num_tests": 12,
+      "visible_failures": 3,
+      "edge_cases": [],
+      "inputs": {
+        "str": "str(0..16, text)"
+      },
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nvoid to_upper_case(char str[])\n{\n    /* TODO: your code here */\n\n}\n",
+      "examples": [
+        {
+          "call": "to_upper_case(\" ZPfSoeIsbmM U\")",
+          "result": "str = \" ZPFSOEISBMM U\""
+        },
+        {
+          "call": "to_upper_case(\"tMVhnc\")",
+          "result": "str = \"TMVHNC\""
+        },
+        {
+          "call": "to_upper_case(\"\")",
+          "result": "str = \"\""
+        }
+      ]
+    },
+    {
+      "title": "Row with the largest sum",
+      "function": "max_row",
+      "returns": "int",
+      "params": [
+        {
+          "name": "grid",
+          "type": "const int[][5]",
+          "input": "grid[int(-9..9)](1..6, 5..5)"
+        },
+        {
+          "name": "rows",
+          "type": "int",
+          "rows_of": "grid"
+        }
+      ],
+      "prompt": "`grid` is a 2D array with `rows` rows and 5 columns. Write `max_row` that\nreturns the index of the row whose elements have the largest sum (the first\nsuch row if there is a tie).",
+      "reference": "int max_row(const int grid[][5], int rows)\n{\n    int best = 0, best_sum = 0;\n    for (int r = 0; r < rows; r++) {\n        int sum = 0;\n        for (int c = 0; c < 5; c++) sum += grid[r][c];\n        if (r == 0 || sum > best_sum) {\n            best = r;\n            best_sum = sum;\n        }\n    }\n    return best;\n}\n",
+      "language": "c",
+      "topic": "2d_arrays",
+      "difficulty": 2,
+      "template": "c_max_row",
+      "points": 10,
+      "kind": "function",
+      "num_tests": 12,
+      "visible_failures": 3,
+      "constraints": {},
+      "edge_cases": [],
+      "inputs": {
+        "grid": "grid[int(-9..9)](1..6, 5..5)"
+      },
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint max_row(const int grid[][5], int rows)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "call": "max_row({{2, -1, -2, 0, -9}, {-2, -2, -9, 2, 3}, {-8, -2, -8, -9, -7}, {-5, 6, -1, 5, -3}, {7, -7, 4, 3, -1}}, 5)",
+          "result": "returns 4"
+        },
+        {
+          "call": "max_row({{-1, -9, -2, -2, 4}, {9, 7, -1, 1, -8}, {5, -2, 3, -9, -1}}, 3)",
+          "result": "returns 1"
+        },
+        {
+          "call": "max_row({{-7, 3, -6, 8, -1}}, 1)",
+          "result": "returns 0"
+        }
+      ]
+    }
+  ]
+}

@@ -132,6 +132,8 @@ def question(iid, qn):
     q = inst["questions"][qn - 1]
     penalties, adaptive = store.penalty_table()
     return render_template("question.html", inst=inst, q=q, qn=qn,
+                           closed=bool(inst["finished"] or q["locked"]),
+                           is_c=q["spec"].get("language") == "c",
                            penalties=[p for p in penalties if p["count"]][:6])
 
 

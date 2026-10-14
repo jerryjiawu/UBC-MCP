@@ -34,7 +34,7 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
   <div class="container-fluid">
     <a class="navbar-brand" href="{{ url_for('home') }}">PrairiePractice</a>
-    <span class="navbar-text text-white-50 me-3 d-none d-md-inline">CPSC practice &middot; Python</span>
+    <span class="navbar-text text-white-50 me-3 d-none d-md-inline">APSC 160 / CPSC practice</span>
     <ul class="navbar-nav me-auto">
       <li class="nav-item"><a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Assessments</a></li>
       <li class="nav-item"><a class="nav-link {% if request.endpoint == 'stats' %}active{% endif %}" href="{{ url_for('stats') }}">Error tracker</a></li>

@@ -47,6 +47,16 @@ CATEGORIES = {
     "wrong_answer": ("Wrong answer", 1.0),
     "constraint_violation": ("Broke a problem constraint", 2.0),
     "other_exception": ("Other runtime error", 1.0),
+    # C-specific (see c_grader.py)
+    "compile_error": ("Compile error", 1.0),
+    "segfault": ("Crash: invalid memory access (segfault)", 1.5),
+    "out_of_bounds": ("Out-of-bounds or uninitialized memory access", 1.5),
+    "uninitialized_variable": ("Uninitialized variable", 1.0),
+    "assignment_in_condition": ("= instead of == in a condition", 1.0),
+    "format_specifier": ("printf/scanf format mismatch (missing & or wrong %)", 1.0),
+    "integer_division": ("Integer division (lost the decimals)", 1.0),
+    "output_format": ("Output format / spacing / precision mismatch", 0.5),
+    "no_output": ("Printed nothing", 1.0),
 }
 
 _EXC_MAP = {
@@ -266,6 +276,9 @@ def check_constraints(code, func, constraints):
 def grade(code, spec, tests, visible=3):
     """tests: [{"args", "edge", "expected"}]. Returns
     {"frac", "passed", "total", "categories": {cat: n}, "load_error", "constraint_errors", "tests": [...]}."""
+    if spec.get("language") == "c":
+        from . import c_grader
+        return c_grader.grade(code, spec, tests, visible)
     total = len(tests)
     report = {"frac": 0.0, "passed": 0, "total": total, "categories": {},
               "load_error": None, "constraint_errors": [], "tests": []}

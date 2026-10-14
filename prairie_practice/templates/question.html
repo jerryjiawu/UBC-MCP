@@ -5,7 +5,7 @@
 {% if inst.remaining_s is not none %}<div class="progress timer-bar rounded-0"><div id="timer-bar" class="progress-bar"></div></div>{% endif %}
 {% endblock %}
 {% block content %}
-{% set closed = inst.finished or q.locked %}
+
 <div class="d-flex align-items-center mb-2 gap-2">
   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('instance', iid=inst.id) }}">&larr; {{ inst.set.title }}</a>
   <div class="ms-auto btn-group btn-group-sm">
@@ -24,21 +24,34 @@
       <div class="alert alert-warning py-2 small">
         <strong>Constraints (checked by the autograder):</strong>
         {% if q.spec.constraints.require_recursion %}must be recursive.{% endif %}
-        {% if q.spec.constraints.forbid_loops %}no loops or comprehensions.{% endif %}
+        {% if q.spec.constraints.forbid_loops %}no loops{% if not is_c %} or comprehensions{% endif %}.{% endif %}
         {% if q.spec.constraints.forbid_builtins %}not allowed: {% for b in q.spec.constraints.forbid_builtins %}<code>{{ b }}</code> {% endfor %}{% endif %}
+        {% if q.spec.constraints.require_calls %}must use: {% for b in q.spec.constraints.require_calls %}<code>{{ b }}</code> {% endfor %}{% endif %}
         Violations score 0.
       </div>
     {% endif %}
     {% if q.spec.examples %}
+      {% if q.spec.kind == "program" %}
+        {% for e in q.spec.examples %}
+          <div class="row g-2 mb-2">
+            <div class="col-md-6"><p class="mb-1 small"><strong>Sample input {{ loop.index }}</strong></p>
+              <pre class="mb-0"><code>{{ e.stdin }}</code></pre></div>
+            <div class="col-md-6"><p class="mb-1 small"><strong>Expected output {{ loop.index }}</strong></p>
+              <pre class="mb-0"><code>{{ e.stdout }}</code></pre></div>
+          </div>
+        {% endfor %}
+      {% else %}
       <p class="mb-1"><strong>Examples</strong></p>
-      <pre class="mb-3"><code>{% for e in q.spec.examples %}&gt;&gt;&gt; {{ e.call }}
-{{ e.result }}
+      <pre class="mb-3"><code>{% for e in q.spec.examples %}{% if is_c %}{{ e.call }}
+  &rarr; {{ e.result }}{% else %}&gt;&gt;&gt; {{ e.call }}
+{{ e.result }}{% endif %}
 {% endfor %}</code></pre>
+      {% endif %}
     {% endif %}
 
     <div class="card file-editor mb-0">
       <div class="card-header d-flex align-items-center py-1">
-        <span class="me-auto">solution.py</span>
+        <span class="me-auto">solution.{{ "c" if is_c else "py" }}</span>
         {% if not closed %}<button type="button" class="btn btn-sm btn-light" id="restore">Restore original file</button>{% endif %}
       </div>
       <div id="editor">{{ q.code }}</div>
@@ -91,6 +104,12 @@
       {% else %}
         <p class="mb-2"><strong>{{ r.passed }}/{{ r.total }}</strong> tests passed.</p>
       {% endif %}
+      {% if r.compiler_output %}
+        <details class="mb-2" {% if r.load_error %}open{% endif %}>
+          <summary class="small">Compiler output</summary>
+          <pre class="mono bg-light p-2 mb-0 small">{{ r.compiler_output }}</pre>
+        </details>
+      {% endif %}
       {% for c in r.constraint_errors %}<div class="alert alert-warning py-1 mb-2 small">Constraint violated: {{ c|md|striptags }} &rarr; score set to 0.</div>{% endfor %}
 
       {% if r.categories %}
@@ -114,6 +133,13 @@
             <td>
               {% if not t.ok %}
                 {% if t.hidden %}<span class="text-muted small">hidden test &middot; {{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
+                {% elif t.stdin is defined %}
+                  <div class="row g-2">
+                    <div class="col-md-4"><div class="small text-muted">input</div><pre class="mono bg-light p-1 mb-0">{{ t.stdin }}</pre></div>
+                    <div class="col-md-4"><div class="small text-muted">expected output</div><pre class="mono bg-light p-1 mb-0">{{ t.expected }}</pre></div>
+                    <div class="col-md-4"><div class="small text-muted">your output</div><pre class="mono bg-light p-1 mb-0">{{ t.got or "(nothing)" }}</pre></div>
+                  </div>
+                  <span class="small text-muted">{{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
                 {% else %}
                   <div class="mono"><span class="text-muted">call:</span> {{ t.call }}
 <span class="text-muted">expected:</span> {{ t.expected }}
@@ -175,7 +201,7 @@
   ace.config.set("basePath", "https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/");
   const editor = ace.edit("editor");
   editor.setTheme("ace/theme/chrome");
-  editor.session.setMode("ace/mode/python");
+  editor.session.setMode({{ ('"ace/mode/c_cpp"' if is_c else '"ace/mode/python"')|safe }});
   editor.session.setTabSize(4);
   editor.session.setUseSoftTabs(true);
   editor.setOptions({ showPrintMargin: false, fontSize: "14px" });

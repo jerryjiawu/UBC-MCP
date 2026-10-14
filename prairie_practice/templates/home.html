@@ -16,7 +16,7 @@
     {% for s in sets %}
       <tr>
         <td><span class="badge text-bg-danger">E{{ loop.revindex }}</span></td>
-        <td><strong>{{ s.title }}</strong><div class="text-muted small">id {{ s.id }} &middot; created {{ s.created|ago }}</div></td>
+        <td><strong>{{ s.title }}</strong> <span class="badge text-bg-dark">{{ {"c": "C", "python": "Python"}.get(s.settings.language, s.settings.language) }}</span><div class="text-muted small">id {{ s.id }} &middot; created {{ s.created|ago }}</div></td>
         <td>{% for t in s.topics %}<span class="badge text-bg-light border me-1">{{ t }}</span>{% endfor %}</td>
         <td class="text-center">{{ s.questions }}</td>
         <td class="text-center">{{ s.points|pts }}</td>

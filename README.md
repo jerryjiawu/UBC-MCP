@@ -172,13 +172,20 @@ Setup:
 
 ### PrairiePractice (PrairieTest-style practice exams)
 
-A local web app that looks and works like a UBC PrairieTest coding exam: assessment overview, timer, an Ace code editor (`solution.py`), **Save & Grade** / **Save only**, submission panels with per-test results, and a points sidebar. Only the front end is recreated; grading runs locally in Python, and nothing from PrairieLearn itself is installed. Problems are Python functions.
+A local web app that looks and works like a UBC PrairieTest coding exam: assessment overview, timer, an Ace code editor (`solution.c` / `solution.py`), **Save & Grade** / **Save only**, submission panels with per-test results, and a points sidebar. Only the front end is recreated; grading runs locally, and nothing from PrairieLearn itself is installed. Questions are in **C (APSC 160 style)** or Python.
 
 ```powershell
 python -m prairie_practice.app      # http://127.0.0.1:5070  (also started by MCP Mommy)
 ```
 
-**Procedural tests, not token-by-token generation.** A problem is a small spec: a prompt, a reference solution, and a one-line type for each parameter (e.g. `"nums": "list[int(-50..50)](0..15)"`). Every time an exam starts, the tests are generated from a fresh random seed. They include boundary cases taken from the type ranges, and the reference solution computes the expected outputs, so the agent never writes test cases. The 25 built-in templates (loops, strings, lists, dicts, recursion, conditionals, nested lists, searching/sorting) randomize their own parameters, so `generate_practice_set` doesn't need the agent to write any problem text.
+**C / APSC 160.** C code is compiled with the clang bundled in the `ziglang` pip package (in `requirements.txt`; about 50 MB, nothing installed system-wide). The very first compile takes about 30 s while zig builds its C library cache; after that each compile takes about 0.3 s. There are two kinds of C question:
+
+- *Function questions* give an exact prototype, e.g. `void min_max(const int data[], int size, int *min, int *max)`. A generated test program calls your function once per test and checks the return value, every pointer out-parameter and every non-`const` array. Your file can keep its own `main` for testing; it gets renamed away. Each test runs twice with different values placed just past the end of every array. If the two runs disagree, or one of those values was overwritten, the grader reports an out-of-bounds or uninitialized-memory access, which plain C wouldn't catch.
+- *Program questions* have you write the whole `main`: read input with `scanf`, print with `printf`. Output must match exactly, ignoring trailing whitespace. Each failed test shows the input, the expected output and your output.
+
+The 26 built-in C templates cover io, conditionals, loops, functions, arrays, pointers, strings and 2D arrays. Extra C error categories: compile error, segfault, out-of-bounds/uninitialized memory, uninitialized variable, `=` instead of `==`, printf/scanf format mismatch (e.g. a missing `&`), integer division, output format/precision mismatch, and printing nothing. The compiler-warning categories (uninitialized variable, `=` in a condition, missing `return`, format mismatch) only cost points when the attempt actually fails.
+
+**Procedural tests, not token-by-token generation.** A problem is a small spec: a prompt, a reference solution, and a one-line type for each parameter (e.g. `"nums": "list[int(-50..50)](0..15)"`). Every time an exam starts, the tests are generated from a fresh random seed. They include boundary cases taken from the type ranges, and the reference solution computes the expected outputs, so the agent never writes test cases. The built-in templates (26 C, 25 Python) randomize their own parameters, so `generate_practice_set` doesn't need the agent to write any problem text.
 
 **Attempts and penalties.** Every graded attempt is classified into error categories: syntax/indentation error, missing or misnamed function, wrong parameters, NameError/TypeError/IndexError/KeyError/…, infinite recursion, infinite loop, missing `return`, printed instead of returned, wrong return type, off-by-one, failed edge cases, wrong answer, and broken constraints ("must be recursive", "no loops", "no `sorted`"; checked statically, scores 0). A wrong attempt deducts the summed penalties of its categories from the question's value for later attempts (default cap 3 points per attempt). Your best attempt counts, and the question locks at 100% or when you run out of attempts. Errors you repeat get more expensive: by default every 5 occurrences of a category add 0.5 points to its penalty, up to 3. The **Error tracker** page shows error frequencies, per-topic error rates and recent attempts, and lets you edit every penalty value.
 
@@ -186,14 +193,14 @@ python -m prairie_practice.app      # http://127.0.0.1:5070  (also started by MC
 
 MCP tools (`python prairie_practice_mcp.py`, already registered for Claude Code in `.mcp.json`):
 
-- `generate_practice_set(title, count, topics, difficulty, target_weak_topics, time_limit_min, max_attempts)` — build an exam from templates; `target_weak_topics` weights topic choice by your tracked error rate.
-- `create_custom_problem(title, function, prompt, inputs, reference, constraints, edge_cases, set_id, ...)` — add a custom question from a compact spec; the reference solution is validated against the generated tests.
+- `generate_practice_set(title, count, topics, difficulty, target_weak_topics, time_limit_min, max_attempts, language)` — build an exam from templates (`language` defaults to `"c"`; `"python"` also works); `target_weak_topics` weights topic choice by your tracked error rate.
+- `create_custom_problem(title, prompt, reference, language, kind, function, params, returns, inputs, stdin, constraints, set_id, ...)` — add a custom question from a compact spec (a C function with typed `params`, a C `program` with an input template, or a Python function); the reference solution is checked against the generated tests.
 - `list_problem_templates` / `list_practice_sets` / `export_practice_set` / `import_practice_set`
 - `get_error_stats` / `get_attempt_history` — what you get wrong most, by category and topic.
 - `set_error_penalty(category, points)` / `configure_adaptive_penalties(every, step, cap, max_per_attempt)`
 - `open_practice_app(open_browser, set_id)` — start the app if needed and open it.
 
-**Security notes:** binds to 127.0.0.1 with no authentication. Submitted code runs as ordinary Python in a subprocess on your machine; isolated mode (`-I`) and timeouts only guard against accidents, not malicious code.
+**Security notes:** binds to 127.0.0.1 with no authentication. Submitted code (Python, or compiled C) runs as an ordinary program on your machine; timeouts only guard against accidents, not malicious code.
 
 ## Project Structure
 
@@ -210,7 +217,9 @@ prairie_practice/   # PrairieTest-style practice exam app
   app.py            # Flask web UI (PrairieLearn-style pages in templates/)
   problems.py       # built-in problem templates + spec validation
   dsl.py            # input type language -> procedural test inputs
-  grader.py         # runs code in a subprocess, classifies errors
+  grader.py         # runs Python code in a subprocess, classifies errors
+  c_grader.py       # compiles + runs C (function harness / whole programs), classifies errors
+  c_problems.py     # APSC 160-style C templates
   runner.py         # subprocess side of the grader
   store.py          # SQLite: sets, exam instances, attempts, error log, penalties
   sets/             # shareable .ubcprac.json files

@@ -7,20 +7,27 @@ expected outputs and the worked examples in the prompt are all produced
 procedurally from a seed.
 """
 import random
+import re
 import textwrap
 
 from . import dsl
 from .grader import call_str, expected_outputs, show
 
-TOPICS = ["loops", "strings", "lists", "dicts", "recursion", "conditionals",
-          "nested_lists", "searching_sorting"]
+TOPICS = {
+    "python": ["loops", "strings", "lists", "dicts", "recursion", "conditionals",
+               "nested_lists", "searching_sorting"],
+    # APSC 160 (C)
+    "c": ["io", "conditionals", "loops", "functions", "arrays", "pointers", "strings", "2d_arrays"],
+}
+LANGUAGES = list(TOPICS)
 
 _TEMPLATES = []
 
 
-def template(topic, difficulty):
+def template(topic, difficulty, language="python"):
     def deco(fn):
-        _TEMPLATES.append({"id": fn.__name__, "topic": topic, "difficulty": difficulty, "fn": fn})
+        _TEMPLATES.append({"id": fn.__name__, "topic": topic, "difficulty": difficulty,
+                           "language": language, "fn": fn})
         return fn
     return deco
 
@@ -543,15 +550,17 @@ def merge_sorted(rng):
 
 # ------------------------------------------------------------------ public
 
-def list_templates():
-    return [{k: t[k] for k in ("id", "topic", "difficulty")} for t in _TEMPLATES]
+def list_templates(language=None):
+    return [{k: t[k] for k in ("id", "language", "topic", "difficulty")} for t in _TEMPLATES
+            if not language or t["language"] == language]
 
 
-def pick_templates(count, topics=None, difficulty=2, seed=None, topic_weights=None):
+def pick_templates(count, topics=None, difficulty=2, seed=None, topic_weights=None, language="python"):
     """Choose `count` distinct templates, preferring the requested difficulty and
     (if given) topics weighted by how often the student gets them wrong."""
     rng = random.Random(seed)
-    pool = [t for t in _TEMPLATES if not topics or t["topic"] in topics] or list(_TEMPLATES)
+    lang = [t for t in _TEMPLATES if t["language"] == language]
+    pool = [t for t in lang if not topics or t["topic"] in topics] or list(lang)
     chosen = []
     while pool and len(chosen) < count:
         weights = []
@@ -566,18 +575,25 @@ def pick_templates(count, topics=None, difficulty=2, seed=None, topic_weights=No
     return chosen, rng
 
 
-def build_from_templates(count, topics=None, difficulty=2, seed=None, topic_weights=None, points=10):
-    chosen, rng = pick_templates(count, topics, difficulty, seed, topic_weights)
+def build_from_templates(count, topics=None, difficulty=2, seed=None, topic_weights=None, points=10,
+                         language="python"):
+    chosen, rng = pick_templates(count, topics, difficulty, seed, topic_weights, language)
     specs = []
     for t in chosen:
         spec = t["fn"](rng)
-        spec.update(topic=t["topic"], difficulty=t["difficulty"], template=t["id"], points=points)
+        spec.update(topic=t["topic"], difficulty=t["difficulty"], template=t["id"], points=points,
+                    language=t["language"])
         specs.append(normalize(spec))
     return specs
 
 
 def normalize(spec):
     """Fill defaults, validate the DSL and reference, and attach worked examples."""
+    spec.setdefault("language", "python")
+    if spec["language"] == "c":
+        return _normalize_c(spec)
+    if spec["language"] != "python":
+        raise ValueError(f"unsupported language {spec['language']!r}; use one of {LANGUAGES}")
     required = ["title", "function", "prompt", "reference", "inputs"]
     missing = [k for k in required if not spec.get(k)]
     if missing:
@@ -589,6 +605,17 @@ def normalize(spec):
             dsl.parse(src)
         except dsl.DSLError as e:
             raise ValueError(f"input {name!r}: {e}") from e
+    _defaults(spec)
+    params = ", ".join(spec["inputs"])
+    spec.setdefault("starter", f"def {spec['function']}({params}):\n    # TODO: your code here\n    pass\n")
+    # Validation run doubles as example generation.
+    tests = build_tests(spec, seed="examples")
+    spec["examples"] = [{"call": call_str(spec["function"], t["args"]), "result": show(t["expected"])}
+                        for t in _example_picks(tests)]
+    return spec
+
+
+def _defaults(spec):
     spec.setdefault("topic", "general")
     spec.setdefault("difficulty", 2)
     spec.setdefault("points", 10)
@@ -596,12 +623,68 @@ def normalize(spec):
     spec.setdefault("visible_failures", 3)
     spec.setdefault("constraints", {})
     spec.setdefault("edge_cases", [])
-    params = ", ".join(spec["inputs"])
-    spec.setdefault("starter", f"def {spec['function']}({params}):\n    # TODO: your code here\n    pass\n")
-    # Validation run doubles as example generation.
+
+
+C_HEADER = "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\n"
+_C_TYPES = re.compile(r"^(const )?(int|double|char)(\[\](\[\d+\])?|\*)?$")
+
+
+def _normalize_c(spec):
+    from . import c_grader
+    spec.setdefault("kind", "function")
+    _defaults(spec)
+    if spec["kind"] == "program":
+        missing = [k for k in ("title", "prompt", "reference", "inputs", "stdin") if not spec.get(k)]
+        if missing:
+            raise ValueError(f"C program spec is missing: {', '.join(missing)}")
+        spec.setdefault("function", "main")
+    elif spec["kind"] == "function":
+        missing = [k for k in ("title", "function", "prompt", "reference", "params") if not spec.get(k)]
+        if missing:
+            raise ValueError(f"C function spec is missing: {', '.join(missing)}")
+        spec.setdefault("returns", "void")
+        if spec["returns"] not in ("void", "int", "double", "char"):
+            raise ValueError("returns must be void, int, double or char")
+        names = {p.get("name") for p in spec["params"]}
+        for p in spec["params"]:
+            if not p.get("name") or not _C_TYPES.match(p.get("type", "")):
+                raise ValueError(f"bad param {p!r}: type must be like int, double, char, int*, "
+                                 "const int[], double[], char[], const int[][5]")
+            for ref in ("size_of", "rows_of", "out_len"):
+                if ref in p and p[ref] not in names:
+                    raise ValueError(f"param {p['name']}: {ref} refers to unknown param {p[ref]!r}")
+            if (p["type"].endswith("[]") and not p["type"].startswith(("char", "const char"))
+                    and not p.get("input") and not p.get("out_len") and not p.get("length")):
+                raise ValueError(f"array param {p['name']} needs an input, out_len or length")
+            if (not p["type"].endswith(("]", "*")) and not p.get("input")
+                    and "size_of" not in p and "rows_of" not in p):
+                raise ValueError(f"scalar param {p['name']} needs an input, size_of or rows_of")
+        spec["inputs"] = {p["name"]: p["input"] for p in spec["params"] if p.get("input")}
+    else:
+        raise ValueError("kind must be 'function' or 'program'")
+    if not isinstance(spec["inputs"], dict):
+        raise ValueError("inputs must be an object mapping name -> type string")
+    for name, src in spec["inputs"].items():
+        try:
+            dsl.parse(src)
+        except dsl.DSLError as e:
+            raise ValueError(f"input {name!r}: {e}") from e
+
+    if spec["kind"] == "program":
+        spec.setdefault("starter", C_HEADER + "int main(void)\n{\n    /* TODO: your code here */\n\n"
+                                              "    return 0;\n}\n")
+    else:
+        default_ret = {"void": "", "int": "    return 0;\n", "double": "    return 0.0;\n",
+                       "char": "    return ' ';\n"}
+        spec.setdefault("starter", C_HEADER + c_grader.prototype(spec) + "\n{\n    /* TODO: your code here */\n\n"
+                        + default_ret[spec["returns"]] + "}\n")
     tests = build_tests(spec, seed="examples")
-    spec["examples"] = [{"call": call_str(spec["function"], t["args"]), "result": show(t["expected"])}
-                        for t in _example_picks(tests)]
+    picks = _example_picks(tests)
+    if spec["kind"] == "program":
+        spec["examples"] = [{"stdin": t["stdin"], "stdout": t["expected"]} for t in picks[:2]]
+    else:
+        spec["examples"] = [{"call": c_grader.call_str(spec, t["args"]),
+                             "result": c_grader.show_result(spec, t["expected"])} for t in picks]
     return spec
 
 
@@ -616,7 +699,18 @@ def build_tests(spec, seed):
     rng = random.Random(f"{seed}:{spec['function']}:{spec['title']}")
     tests = dsl.make_tests(spec["inputs"], rng, int(spec.get("num_tests", 12)),
                            spec.get("edge_cases", []), spec.get("auto_edges", True))
+    if spec.get("language") == "c":
+        from . import c_grader
+        expected, stdins = c_grader.expected_outputs(spec, tests)
+        for i, t in enumerate(tests):
+            t["expected"] = expected[i]
+            if stdins:
+                t["stdin"] = stdins[i]
+        return tests
     expected = expected_outputs(spec, [t["args"] for t in tests])
     for t, e in zip(tests, expected):
         t["expected"] = e
     return tests
+
+
+from . import c_problems  # noqa: E402,F401  -- registers the C (APSC 160) templates

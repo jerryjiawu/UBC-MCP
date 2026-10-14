@@ -136,9 +136,10 @@ def _slug(s):
 
 def save_set(title, questions, time_limit_min=50, max_attempts=5, description="", set_id=None):
     set_id = set_id or uuid.uuid4().hex[:8]
+    languages = sorted({q.get("language", "python") for q in questions})
     data = {"format": FORMAT, "title": title, "description": description,
             "settings": {"time_limit_min": int(time_limit_min), "max_attempts": int(max_attempts),
-                         "language": "python"},
+                         "language": "+".join(languages) or "python"},
             "questions": questions}
     with db() as conn:
         conn.execute("INSERT OR REPLACE INTO sets VALUES (?, ?, ?, ?)",
