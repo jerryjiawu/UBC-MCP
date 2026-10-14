@@ -185,7 +185,15 @@ python -m prairie_practice.app      # http://127.0.0.1:5070  (also started by MC
 
 The 26 built-in C templates cover io, conditionals, loops, functions, arrays, pointers, strings and 2D arrays. Extra C error categories: compile error, segfault, out-of-bounds/uninitialized memory, uninitialized variable, `=` instead of `==`, printf/scanf format mismatch (e.g. a missing `&`), integer division, output format/precision mismatch, and printing nothing. The compiler-warning categories (uninitialized variable, `=` in a condition, missing `return`, format mismatch) only cost points when the attempt actually fails.
 
-**Procedural tests, not token-by-token generation.** A problem is a small spec: a prompt, a reference solution, and a one-line type for each parameter (e.g. `"nums": "list[int(-50..50)](0..15)"`). Every time an exam starts, the tests are generated from a fresh random seed. They include boundary cases taken from the type ranges, and the reference solution computes the expected outputs, so the agent never writes test cases. The built-in templates (26 C, 25 Python) randomize their own parameters, so `generate_practice_set` doesn't need the agent to write any problem text.
+**File I/O.** C programs, C functions that take a file name, and Python functions can all read and write files.
+
+- A question declares generated input files (e.g. `data.txt` built from random `file_data`), output files to grade, and optionally a test where the input file is missing. Each test runs in its own empty folder holding only its input files.
+- Every C build is force-included with a small header that routes `fopen`/`fclose`/`fscanf`/`fprintf`/`fgets`/... through logging wrappers. Using a NULL `FILE*` crashes the program, as it does on Linux where PrairieLearn grades; Windows' C runtime would otherwise quietly return an error.
+- File names are case-sensitive, like on Linux.
+- Extra error types: unhandled `fopen` failure, wrong file name, wrong file mode, output file not written, `while (!feof(...))` loops, and forgetting `fclose` (tracked, but it never fails a test).
+- Failing tests show the input files, expected vs. your output files, and the file calls your code made. There are six built-in `file_io` templates (five C, one Python).
+
+**Procedural tests, not token-by-token generation.** A problem is a small spec: a prompt, a reference solution, and a one-line type for each parameter (e.g. `"nums": "list[int(-50..50)](0..15)"`). Every time an exam starts, the tests are generated from a fresh random seed. They include boundary cases taken from the type ranges, and the reference solution computes the expected outputs, so the agent never writes test cases. The built-in templates (31 C, 26 Python) randomize their own parameters, so `generate_practice_set` doesn't need the agent to write any problem text.
 
 **Attempts and penalties.** Every graded attempt is classified into error categories: syntax/indentation error, missing or misnamed function, wrong parameters, NameError/TypeError/IndexError/KeyError/…, infinite recursion, infinite loop, missing `return`, printed instead of returned, wrong return type, off-by-one, failed edge cases, wrong answer, and broken constraints ("must be recursive", "no loops", "no `sorted`"; checked statically, scores 0). A wrong attempt deducts the summed penalties of its categories from the question's value for later attempts (default cap 3 points per attempt). Your best attempt counts, and the question locks at 100% or when you run out of attempts. Errors you repeat get more expensive: by default every 5 occurrences of a category add 0.5 points to its penalty, up to 3. The **Gradebook** page shows exam scores, error frequencies, per-topic error rates and recent submissions, and lets you edit every penalty value.
 
@@ -221,6 +229,8 @@ prairie_practice/   # PrairieTest-style practice exam app
   grader.py         # runs Python code in a subprocess, classifies errors
   c_grader.py       # compiles + runs C (function harness / whole programs), classifies errors
   c_problems.py     # APSC 160-style C templates
+  file_problems.py  # file I/O templates
+  fileio.py         # input-file rendering, output-file reading, fopen log analysis
   runner.py         # subprocess side of the grader
   store.py          # SQLite: sets, exam instances, attempts, error log, penalties
   sets/             # shareable .ubcprac.json files

@@ -131,19 +131,22 @@ def external_results(attempt, spec):
 
     tests = []
     for t in r.get("tests", []):
-        name = f"Test {t['n']}" + (" (edge case)" if t.get("edge") else "")
+        name = (f"Test {t['n']}" + (" (missing input file)" if t.get("no_files")
+                                    else " (edge case)" if t.get("edge") else ""))
         body = ""
         if not t["ok"]:
+            error_type = f"\n\nError type: {labels.get(t.get('category'), t.get('category'))}"
             if t.get("hidden"):
-                body = f"Hidden test.\nError type: {labels.get(t.get('category'), t.get('category'))}"
+                body = f"Hidden test.{error_type}"
             elif "stdin" in t:
-                body = (f"Input:\n{t['stdin'].rstrip()}\n\nExpected output:\n{t['expected'].rstrip()}"
-                        f"\n\nYour output:\n{(t.get('got') or '(nothing)').rstrip()}"
-                        f"\n\nError type: {labels.get(t.get('category'), t.get('category'))}")
+                body = ((f"Input:\n{t['stdin'].rstrip()}\n\n" if t["stdin"].strip() else "")
+                        + f"Expected output:\n{t['expected'].rstrip()}"
+                        f"\n\nYour output:\n{(t.get('got') or '(nothing)').rstrip()}")
             else:
                 body = (f"Call:     {t['call']}\nExpected: {t['expected']}\nGot:      {t.get('got', '')}"
-                        + (f"\nPrinted:  {t['stdout']}" if t.get("stdout") else "")
-                        + f"\n\nError type: {labels.get(t.get('category'), t.get('category'))}")
+                        + (f"\nPrinted:  {t['stdout']}" if t.get("stdout") else ""))
+            if not t.get("hidden"):
+                body += _file_details(t) + error_type
         tests.append({"index": t["n"], "name": name, "points": 1 if t["ok"] else 0, "max_points": 1,
                       "message": body,
                       "color": "#008c31" if t["ok"] else "#c72c1c",
@@ -153,6 +156,30 @@ def external_results(attempt, spec):
             "color": "#008c31" if attempt["frac"] >= 1 else "#c72c1c",
             "message": "\n".join(msg).strip(), "output": (r.get("compiler_output") or "").strip(),
             "tests": tests}
+
+
+def _clip(text, n=800):
+    text = (text or "").rstrip("\n")
+    return text if len(text) <= n else text[:n] + "\n... (truncated)"
+
+
+def _file_details(t):
+    """Input files, expected vs. actual output files and fopen calls for one failed test."""
+    if "files_in" not in t and not t.get("no_files"):
+        return ""
+    parts = []
+    if t.get("no_files"):
+        parts.append("This test runs with NO input files present (fopen should fail).")
+    for name, content in (t.get("files_in") or {}).items():
+        parts.append(f"Input file {name}:\n{_clip(content) or '(empty)'}")
+    got_files = t.get("got_files") or {}
+    for name, exp in (t.get("expected_files") or {}).items():
+        got = got_files.get(name)
+        parts.append(f"Expected {name}:\n" + (_clip(exp) or "(empty)" if exp is not None else "(should not exist)"))
+        parts.append(f"Your {name}:\n" + (_clip(got) or "(empty)" if got is not None else "(not created)"))
+    if t.get("io"):
+        parts.append("File calls:\n" + "\n".join("  " + x for x in t["io"]))
+    return "\n\n" + "\n\n".join(parts) if parts else ""
 
 
 # ------------------------------------------------------------------ routes

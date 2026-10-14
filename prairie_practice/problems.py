@@ -10,14 +10,15 @@ import random
 import re
 import textwrap
 
-from . import dsl
+from . import dsl, fileio
 from .grader import call_str, expected_outputs, show
 
 TOPICS = {
     "python": ["loops", "strings", "lists", "dicts", "recursion", "conditionals",
-               "nested_lists", "searching_sorting"],
+               "nested_lists", "searching_sorting", "file_io"],
     # APSC 160 (C)
-    "c": ["io", "conditionals", "loops", "functions", "arrays", "pointers", "strings", "2d_arrays"],
+    "c": ["io", "conditionals", "loops", "functions", "arrays", "pointers", "strings", "2d_arrays",
+          "file_io"],
 }
 LANGUAGES = list(TOPICS)
 
@@ -606,13 +607,41 @@ def normalize(spec):
         except dsl.DSLError as e:
             raise ValueError(f"input {name!r}: {e}") from e
     _defaults(spec)
+    _check_files(spec)
     params = ", ".join(spec["inputs"])
     spec.setdefault("starter", f"def {spec['function']}({params}):\n    # TODO: your code here\n    pass\n")
     # Validation run doubles as example generation.
     tests = build_tests(spec, seed="examples")
-    spec["examples"] = [{"call": call_str(spec["function"], t["args"]), "result": show(t["expected"])}
-                        for t in _example_picks(tests)]
+    spec["examples"] = [dict(_example_files(t), call=call_str(spec["function"], t["args"]),
+                             result=show(t["expected"])) for t in _example_picks(tests)]
     return spec
+
+
+def _check_files(spec):
+    """Validate the optional file I/O fields (see fileio.py)."""
+    spec.setdefault("file_data", {})
+    if not isinstance(spec["file_data"], dict):
+        raise ValueError("file_data must be an object mapping name -> type string")
+    for name, src in spec["file_data"].items():
+        try:
+            dsl.parse(src)
+        except dsl.DSLError as e:
+            raise ValueError(f"file_data {name!r}: {e}") from e
+        if name in spec.get("inputs", {}):
+            raise ValueError(f"file_data {name!r} clashes with an input of the same name")
+    if not isinstance(spec.get("input_files") or {}, dict) or not all(
+            isinstance(v, str) for v in (spec.get("input_files") or {}).values()):
+        raise ValueError("input_files must map file name -> template string")
+    if not isinstance(spec.get("output_files") or [], list):
+        raise ValueError("output_files must be a list of file names")
+    fileio.check_templates(spec)
+
+
+def _example_files(t):
+    if not (t.get("files") or t.get("expected_files") or t.get("no_files")):
+        return {}
+    return {"files": t.get("files") or {}, "out_files": t.get("expected_files") or {},
+            "no_files": bool(t.get("no_files"))}
 
 
 def _defaults(spec):
@@ -634,9 +663,15 @@ def _normalize_c(spec):
     spec.setdefault("kind", "function")
     _defaults(spec)
     if spec["kind"] == "program":
-        missing = [k for k in ("title", "prompt", "reference", "inputs", "stdin") if not spec.get(k)]
+        missing = [k for k in ("title", "prompt", "reference") if not spec.get(k)]
+        if not spec.get("inputs") and not spec.get("file_data"):
+            missing.append("inputs (or file_data)")
+        if not spec.get("stdin") and not fileio.has_files(spec):
+            missing.append("stdin (or input_files)")
         if missing:
             raise ValueError(f"C program spec is missing: {', '.join(missing)}")
+        spec.setdefault("inputs", {})
+        spec.setdefault("stdin", "")
         spec.setdefault("function", "main")
     elif spec["kind"] == "function":
         missing = [k for k in ("title", "function", "prompt", "reference", "params") if not spec.get(k)]
@@ -669,6 +704,7 @@ def _normalize_c(spec):
             dsl.parse(src)
         except dsl.DSLError as e:
             raise ValueError(f"input {name!r}: {e}") from e
+    _check_files(spec)
 
     if spec["kind"] == "program":
         spec.setdefault("starter", C_HEADER + "int main(void)\n{\n    /* TODO: your code here */\n\n"
@@ -681,36 +717,48 @@ def _normalize_c(spec):
     tests = build_tests(spec, seed="examples")
     picks = _example_picks(tests)
     if spec["kind"] == "program":
-        spec["examples"] = [{"stdin": t["stdin"], "stdout": t["expected"]} for t in picks[:2]]
+        spec["examples"] = [dict(_example_files(t), stdin=t["stdin"], stdout=t["expected"])
+                            for t in picks[:2]]
     else:
-        spec["examples"] = [{"call": c_grader.call_str(spec, t["args"]),
-                             "result": c_grader.show_result(spec, t["expected"])} for t in picks]
+        spec["examples"] = [dict(_example_files(t), call=c_grader.call_str(spec, t["args"]),
+                                 result=c_grader.show_result(spec, t["expected"])) for t in picks]
     return spec
 
 
 def _example_picks(tests):
     random_ones = [t for t in tests if not t["edge"]]
-    edges = [t for t in tests if t["edge"]]
+    edges = [t for t in tests if t["edge"] and not t.get("no_files")]
     picks = random_ones[:2] + edges[:1]
     return picks or tests[:3]
 
 
 def build_tests(spec, seed):
+    """Generate inputs (+ file_data), render input files / stdin, then run the
+    reference to get expected results and expected output files."""
     rng = random.Random(f"{seed}:{spec['function']}:{spec['title']}")
-    tests = dsl.make_tests(spec["inputs"], rng, int(spec.get("num_tests", 12)),
-                           spec.get("edge_cases", []), spec.get("auto_edges", True))
+    names = list(spec["inputs"])
+    data = spec.get("file_data") or {}
+    fields = dict(spec["inputs"], **data)
+    # explicit edge cases give the inputs; their file_data is generated
+    edges = [list(e) + [dsl.generate(src, rng) for src in data.values()] for e in spec.get("edge_cases", [])]
+    tests = dsl.make_tests(fields, rng, int(spec.get("num_tests", 12)), edges, spec.get("auto_edges", True))
+    if spec.get("missing_file_test") and tests:
+        tests.append(dict(tests[-1], edge=True, no_files=True))
+    for t in tests:
+        values = dict(zip(fields, t["args"]))
+        t["args"] = t["args"][:len(names)]
+        if data:
+            t["data"] = {k: values[k] for k in data}
+        if spec.get("input_files"):
+            t["files"] = {} if t.get("no_files") else {
+                name: fileio.render(tmpl, values) for name, tmpl in spec["input_files"].items()}
+        if spec.get("kind") == "program":
+            t["stdin"] = fileio.render(spec.get("stdin") or "", values)
     if spec.get("language") == "c":
         from . import c_grader
-        expected, stdins = c_grader.expected_outputs(spec, tests)
-        for i, t in enumerate(tests):
-            t["expected"] = expected[i]
-            if stdins:
-                t["stdin"] = stdins[i]
-        return tests
-    expected = expected_outputs(spec, [t["args"] for t in tests])
-    for t, e in zip(tests, expected):
-        t["expected"] = e
-    return tests
+        return c_grader.expected_outputs(spec, tests)
+    return expected_outputs(spec, tests)
 
 
 from . import c_problems  # noqa: E402,F401  -- registers the C (APSC 160) templates
+from . import file_problems  # noqa: E402,F401  -- registers the file I/O templates

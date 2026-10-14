@@ -65,6 +65,33 @@ def _student_line(tb):
     return None
 
 
+IO_EVENTS = []  # ("open", name, mode, ok) for every open() the student's code makes
+
+
+def _strict_case_open():
+    """Make open() case-sensitive like the Linux graders (on Windows,
+    open("Words.txt") would otherwise find words.txt) and log each call."""
+    import builtins
+    import os
+    real_open = builtins.open
+
+    def strict_open(file, mode="r", *args, **kwargs):
+        name = file if isinstance(file, str) else str(file)
+        try:
+            if isinstance(file, str) and os.path.exists(file):
+                folder, base = os.path.split(file)
+                if base and base not in os.listdir(folder or "."):
+                    raise FileNotFoundError(2, "No such file or directory", file)
+            f = real_open(file, mode, *args, **kwargs)
+        except OSError:
+            IO_EVENTS.append(["open", name, mode, False])
+            raise
+        IO_EVENTS.append(["open", name, mode, True])
+        return f
+
+    builtins.open = strict_open
+
+
 def main():
     code_file, func_name, nonce = sys.argv[1], sys.argv[2], sys.argv[3]
     real_out = sys.stdout
@@ -77,6 +104,7 @@ def main():
 
     with open(code_file, encoding="utf-8") as fh:
         src = fh.read()
+    _strict_case_open()
     ns = {"__name__": "__student__"}
     buf = io.StringIO()
     try:
@@ -118,6 +146,9 @@ def main():
             out["exc"] = {"type": type(e).__name__, "msg": str(e)[:300],
                           "line": _student_line(e.__traceback__)}
         out["stdout"] = buf.getvalue()[:STDOUT_CAP]
+        if IO_EVENTS:
+            out["io"] = IO_EVENTS[:20]
+            IO_EVENTS.clear()
         emit(out)
 
 

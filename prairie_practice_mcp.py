@@ -108,7 +108,8 @@ def generate_practice_set(title: str, count: int = 4, topics: list[str] | None =
     language: "c" (APSC 160: function questions with a given prototype, plus
         whole programs using scanf/printf) or "python".
     topics: subset of list_problem_templates()['topics'][language]; omit for all.
-        C topics: io, conditionals, loops, functions, arrays, pointers, strings, 2d_arrays.
+        C topics: io, conditionals, loops, functions, arrays, pointers, strings, 2d_arrays,
+        file_io (Python also has file_io).
     difficulty: 1 (intro) .. 3 (hard); templates near this level are preferred.
     target_weak_topics: weight topic choice by the student's tracked error rate.
     time_limit_min: 0 = untimed. max_attempts: 0 = unlimited.
@@ -133,6 +134,8 @@ def create_custom_problem(title: str, prompt: str, reference: str, language: str
                           topic: str = "general", difficulty: int = 2,
                           points: int = 10, constraints: dict | None = None,
                           edge_cases: list[list] | None = None, num_tests: int = 12,
+                          input_files: dict[str, str] | None = None, output_files: list[str] | None = None,
+                          file_data: dict[str, str] | None = None, missing_file_test: bool = False,
                           set_id: str | None = None, new_set_title: str | None = None,
                           time_limit_min: int = 50, max_attempts: int = 5) -> dict:
     """Add a custom coding question from a compact spec. Do NOT write test cases:
@@ -174,11 +177,38 @@ def create_custom_problem(title: str, prompt: str, reference: str, language: str
         "forbid_builtins": ["sorted", ...], "require_calls": ["strlen", ...] (C only)}
         -- checked statically; violations score 0.
     edge_cases: optional explicit argument lists, e.g. [[[]], [[0]]].
+
+    File I/O (C programs, C functions, Python functions). Every test runs in its
+    own empty folder holding only that test's input files; names are
+    case-sensitive (like PrairieLearn's Linux graders):
+    file_data: extra generated values used only to build files, same type syntax,
+        e.g. {"values": "list[int(0..100)](0..12)"}.
+    input_files: {file name: template}. Templates can use any input or file_data
+        field: {x} (lists space-separated, grids one row per line), {lines:x} (one
+        per line), {csv:x}, {len:x}. e.g. {"data.txt": "{len:values}
+{lines:values}
+"}.
+    output_files: files the program must create; graded against the reference's.
+    missing_file_test: add a test with no input files (checks fopen == NULL handling).
+    A C function can take the file name as a param:
+        {"name": "filename", "type": "const char[]", "input": "choice(\"data.txt\")"}.
+    The grader intercepts fopen/fclose/fscanf/... and reports wrong file names or
+    modes, unchecked NULL from fopen, missing fclose, output files never written, and
+    while(!feof(...)) loops.
+
     set_id: add to an existing set; otherwise a new set named new_set_title (or title)."""
     spec = {"title": title, "prompt": prompt, "reference": reference, "language": language,
             "topic": topic, "difficulty": difficulty, "points": points,
             "constraints": constraints or {}, "edge_cases": edge_cases or [],
             "num_tests": max(4, min(num_tests, 40))}
+    if input_files:
+        spec["input_files"] = input_files
+    if output_files:
+        spec["output_files"] = output_files
+    if file_data:
+        spec["file_data"] = file_data
+    if missing_file_test:
+        spec["missing_file_test"] = True
     if function:
         spec["function"] = function
     if inputs:
@@ -188,7 +218,7 @@ def create_custom_problem(title: str, prompt: str, reference: str, language: str
         if kind == "function":
             spec.update(params=params or [], returns=returns)
         else:
-            spec["stdin"] = stdin
+            spec["stdin"] = stdin or ""
     try:
         spec = problems.normalize(spec)
     except (ValueError, RuntimeError) as e:

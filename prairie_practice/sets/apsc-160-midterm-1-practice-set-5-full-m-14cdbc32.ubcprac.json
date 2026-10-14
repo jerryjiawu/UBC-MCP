@@ -1,0 +1,188 @@
+{
+  "format": "ubc-practice/1",
+  "title": "APSC 160 Midterm 1 Practice \u2014 Set 5 (Full Mock, Hardest)",
+  "description": "",
+  "settings": {
+    "time_limit_min": 70,
+    "max_attempts": 5,
+    "language": "c"
+  },
+  "questions": [
+    {
+      "title": "Q2 \u00b7 Series Approximation of e^x",
+      "prompt": "**[15] Q2** The exponential function can be approximated by the infinite series\n\n  e^x = 1 + x + x\u00b2/2! + x\u00b3/3! + x\u2074/4! + \u2026\n\nwhere the *n*-th term (counting from n = 0) is x\u207f/n!. Notice that each term equals the previous term multiplied by x/n.\n\nWrite a program that prompts the user with `Enter x (-5 to 5): `, reads `x` (type `double`), and keeps adding terms, starting with the term 1, **until the next term to be added has an absolute value less than 1.0 \u00d7 10\u207b\u2076**. That term is not added. Then print the approximation to **6 decimal places** and the number of terms added, exactly as shown.\n\nFor full marks, do **not** use `pow` or compute factorials separately: build each term from the previous one. You may use `fabs` from `math.h`. Use a symbolic constant for the tolerance.\n\nSample runs:\n\n```\nEnter x (-5 to 5): 1.5\ne^1.50 is approximately 4.481689\nTerms used: 12\n```\n\n```\nEnter x (-5 to 5): -3\ne^-3.00 is approximately 0.049787\nTerms used: 17\n```",
+      "reference": "#include <stdio.h>\n#include <math.h>\n#define TOLERANCE 1.0e-6\nint main(void) {\n    double x, term = 1.0, sum = 0.0;\n    int n = 0;\n    printf(\"Enter x (-5 to 5): \");\n    scanf(\"%lf\", &x);\n    while (fabs(term) >= TOLERANCE) {\n        sum += term;\n        n++;\n        term = term * x / n;\n    }\n    printf(\"e^%.2lf is approximately %.6lf\\n\", x, sum);\n    printf(\"Terms used: %d\\n\", n);\n    return 0;\n}",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 3,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "x": "float(-5..5)"
+      },
+      "kind": "program",
+      "stdin": "{x}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "2.34\n",
+          "stdout": "Enter x (-5 to 5): e^2.34 is approximately 10.381236\nTerms used: 15\n"
+        },
+        {
+          "stdin": "1.82\n",
+          "stdout": "Enter x (-5 to 5): e^1.82 is approximately 6.171858\nTerms used: 13\n"
+        }
+      ]
+    },
+    {
+      "title": "Q3 \u00b7 Humidity Data Pre-processing (file in \u2192 file out)",
+      "prompt": "**[15] Q3** A humidity sensor writes relative-humidity readings (percent) to the text file `raw.dat`, one value per line. The number of lines is unknown. Valid readings must lie between 0 and 100 inclusive, but sensor noise produces some values outside that range.\n\nWrite a complete program that:\n\n* opens `raw.dat` for reading and `clean.dat` for writing. If `raw.dat` cannot be opened, print `Error: cannot open raw.dat` and stop.\n* reads every value, and **clamps** it: values above 100.00 become 100.00, and values below 0.00 become 0.00\n* writes each (possibly clamped) value to `clean.dat`, one per line, to **2 decimal places**, in the same order\n* closes both files, then prints `Clamped <c> of <n> values.`, where c is how many values were changed and n is the total read\n\nUse symbolic constants for both file names and both limits, and do not use `feof` to control the loop.\n\nSample: if `raw.dat` contains\n\n```\n45.2\n-3\n120.5\n99.99\n```\n\nthe program prints `Clamped 2 of 4 values.` and `clean.dat` contains\n\n```\n45.20\n0.00\n100.00\n99.99\n```",
+      "reference": "#include <stdio.h>\n#define INPUTFILE \"raw.dat\"\n#define OUTPUTFILE \"clean.dat\"\n#define LOW 0.0\n#define HIGH 100.0\nint main(void) {\n    FILE *inFile, *outFile;\n    double value;\n    int total = 0, clamped = 0;\n    inFile = fopen(INPUTFILE, \"r\");\n    if (inFile == NULL) {\n        printf(\"Error: cannot open %s\\n\", INPUTFILE);\n        return 1;\n    }\n    outFile = fopen(OUTPUTFILE, \"w\");\n    if (outFile == NULL) {\n        printf(\"Error: cannot open %s\\n\", OUTPUTFILE);\n        fclose(inFile);\n        return 1;\n    }\n    while (fscanf(inFile, \"%lf\", &value) == 1) {\n        total++;\n        if (value > HIGH) {\n            value = HIGH;\n            clamped++;\n        } else if (value < LOW) {\n            value = LOW;\n            clamped++;\n        }\n        fprintf(outFile, \"%.2lf\\n\", value);\n    }\n    fclose(inFile);\n    fclose(outFile);\n    printf(\"Clamped %d of %d values.\\n\", clamped, total);\n    return 0;\n}",
+      "language": "c",
+      "topic": "file_io",
+      "difficulty": 3,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "input_files": {
+        "raw.dat": "{lines:values}\n"
+      },
+      "output_files": [
+        "clean.dat"
+      ],
+      "file_data": {
+        "values": "list[float(-20..120)](1..15)"
+      },
+      "missing_file_test": true,
+      "kind": "program",
+      "stdin": "",
+      "visible_failures": 3,
+      "inputs": {},
+      "function": "main",
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "files": {
+            "raw.dat": "-3.01\n-17.51\n-7.52\n18.06\n20.95\n65.7\n77.01\n49.72\n105.9\n26.72\n90.81\n101.81\n"
+          },
+          "out_files": {
+            "clean.dat": "0.00\n0.00\n0.00\n18.06\n20.95\n65.70\n77.01\n49.72\n100.00\n26.72\n90.81\n100.00\n"
+          },
+          "no_files": false,
+          "stdin": "",
+          "stdout": "Clamped 5 of 12 values.\n"
+        },
+        {
+          "files": {
+            "raw.dat": "24.5\n110.88\n74.97\n50.31\n80.92\n8.11\n9.06\n59.2\n94.57\n-8.77\n113.65\n"
+          },
+          "out_files": {
+            "clean.dat": "24.50\n100.00\n74.97\n50.31\n80.92\n8.11\n9.06\n59.20\n94.57\n0.00\n100.00\n"
+          },
+          "no_files": false,
+          "stdin": "",
+          "stdout": "Clamped 3 of 11 values.\n"
+        }
+      ]
+    },
+    {
+      "title": "Q4 \u00b7 Table of sin(cx)/(1+x) with Maximum",
+      "prompt": "**[20] Q4** Write a program that:\n\n* prompts with `Enter number of rows: ` and reads `nRows`, then prompts with `Enter number of columns: ` and reads `nCols` (both positive integers)\n* prints a table of values of the function f(c, x) = sin(c\u00b7x) / (1 + x) for c = 1, 2, \u2026, nCols (one column per value of c) at each of the x values\n\n  \u03c0/nRows, 2\u03c0/nRows, 3\u03c0/nRows, \u2026, \u03c0\n\n* each row starts with x to **3 decimal places**, followed by one value per column, each printed with the format `\" %7.4lf\"` (a space, then the value right-aligned in 7 characters to 4 decimal places)\n* after the table, prints the **maximum** value in the whole table and the x that produced it, on two lines exactly as shown (scan row by row, left to right; replace the maximum only when a value is **strictly** greater)\n\nUse `#define PI acos(-1.0)`. Do not print column headers.\n\nSample run:\n\n```\nEnter number of rows: 8\nEnter number of columns: 3\n0.393  0.2748  0.5077  0.6634\n0.785  0.3960  0.5601  0.3960\n1.178  0.4242  0.3246 -0.1757\n1.571  0.3890  0.0000 -0.3890\n1.963  0.3118 -0.2386 -0.1291\n2.356  0.2107 -0.2980  0.2107\n2.749  0.1021 -0.1886  0.2464\n3.142  0.0000 -0.0000  0.0000\nMaximum output value of 0.6634\noccurs at x = 0.393\n```",
+      "reference": "#include <stdio.h>\n#include <math.h>\n#define PI acos(-1.0)\nint main(void) {\n    int nRows, nCols, row, c;\n    double x, value, maxValue = 0.0, maxX = 0.0;\n    printf(\"Enter number of rows: \");\n    scanf(\"%d\", &nRows);\n    printf(\"Enter number of columns: \");\n    scanf(\"%d\", &nCols);\n    for (row = 1; row <= nRows; row++) {\n        x = row * PI / nRows;\n        printf(\"%.3lf\", x);\n        for (c = 1; c <= nCols; c++) {\n            value = sin(c * x) / (1 + x);\n            printf(\" %7.4lf\", value);\n            if ((row == 1 && c == 1) || value > maxValue) {\n                maxValue = value;\n                maxX = x;\n            }\n        }\n        printf(\"\\n\");\n    }\n    printf(\"Maximum output value of %.4lf\\n\", maxValue);\n    printf(\"occurs at x = %.3lf\\n\", maxX);\n    return 0;\n}",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 3,
+      "points": 20,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "nCols": "int(1..5)",
+        "nRows": "int(2..12)"
+      },
+      "kind": "program",
+      "stdin": "{nRows}\n{nCols}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "11\n5\n",
+          "stdout": "Enter number of rows: Enter number of columns: 0.286  0.2191  0.4205  0.5879  0.7076  0.7699\n0.571  0.3441  0.5789  0.6300  0.4810  0.1793\n0.857  0.4070  0.5331  0.2912 -0.1517 -0.4899\n1.142  0.4246  0.3528 -0.1315 -0.4620 -0.2524\n1.428  0.4077  0.1160 -0.3746 -0.2227  0.3113\n1.714  0.3648 -0.1038 -0.3352  0.1992  0.2785\n1.999  0.3033 -0.2520 -0.0939  0.3300 -0.1803\n2.285  0.2301 -0.3013  0.1646  0.0858 -0.2769\n2.570  0.1514 -0.2548  0.2772 -0.2117  0.0789\n2.856  0.0731 -0.1402  0.1960 -0.2359  0.2567\n3.142  0.0000 -0.0000  0.0000 -0.0000  0.0000\nMaximum output value of 0.7699\noccurs at x = 0.286\n"
+        },
+        {
+          "stdin": "3\n2\n",
+          "stdout": "Enter number of rows: Enter number of columns: 1.047  0.4230  0.4230\n2.094  0.2799 -0.2799\n3.142  0.0000 -0.0000\nMaximum output value of 0.4230\noccurs at x = 1.047\n"
+        }
+      ]
+    },
+    {
+      "title": "Q5 \u00b7 binaryOnes function (number bases)",
+      "prompt": "**[10] Q5** Write the function\n\n```c\nint binaryOnes(int n);\n```\n\nthat returns how many `1` digits appear in the **binary** representation of the non-negative integer `n`. Use the repeated-division method from class (divide by 2 and look at remainders). Don't use bitwise operators. Write only the function, with a documentation comment.\n\n| call | binary | returns |\n|---|---|---|\n| `binaryOnes(35)` | 100011 | 3 |\n| `binaryOnes(175)` | 10101111 | 6 |\n| `binaryOnes(256)` | 100000000 | 1 |\n| `binaryOnes(0)` | 0 | 0 |",
+      "reference": "/* Returns the number of 1 digits in the binary representation of n (n >= 0). */\nint binaryOnes(int n) {\n    int count = 0;\n    while (n > 0) {\n        if (n % 2 == 1)\n            count++;\n        n = n / 2;\n    }\n    return count;\n}",
+      "language": "c",
+      "topic": "functions",
+      "difficulty": 3,
+      "points": 10,
+      "constraints": {},
+      "edge_cases": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          35
+        ],
+        [
+          175
+        ],
+        [
+          255
+        ],
+        [
+          256
+        ]
+      ],
+      "num_tests": 10,
+      "function": "binaryOnes",
+      "kind": "function",
+      "params": [
+        {
+          "input": "int(0..100000)",
+          "name": "n",
+          "type": "int"
+        }
+      ],
+      "returns": "int",
+      "visible_failures": 3,
+      "inputs": {
+        "n": "int(0..100000)"
+      },
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint binaryOnes(int n)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "call": "binaryOnes(45917)",
+          "result": "returns 10"
+        },
+        {
+          "call": "binaryOnes(95116)",
+          "result": "returns 9"
+        },
+        {
+          "call": "binaryOnes(0)",
+          "result": "returns 0"
+        }
+      ]
+    }
+  ]
+}

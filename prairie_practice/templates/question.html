@@ -40,13 +40,41 @@
                 </ul>
               </div>
             {% endif %}
+            {% set has_files = q.spec.input_files or q.spec.output_files %}
+            {% if has_files %}
+              <div class="alert alert-info">
+                Your code runs in a folder that contains
+                {% if q.spec.input_files %}{% for f in q.spec.input_files %}<code>{{ f }}</code>{{ ", " if not loop.last }}{% endfor %}{% else %}no input files{% endif %}.
+                {% if q.spec.output_files %}It should create {% for f in q.spec.output_files %}<code>{{ f }}</code>{{ ", " if not loop.last }}{% endfor %}, which is graded along with your {{ "output" if q.spec.kind == "program" else "return value" }}.{% endif %}
+                {% if q.spec.missing_file_test %}One test runs with the input file missing.{% endif %}
+                File names are case-sensitive.
+              </div>
+            {% endif %}
             {% if q.spec.examples %}
-              {% if q.spec.kind == "program" %}
+              {% if q.spec.kind == "program" or has_files %}
                 {% for e in q.spec.examples %}
-                  <p class="mb-1"><strong>Sample input {{ loop.index }}:</strong></p>
-                  <pre class="bg-light border rounded p-2"><code>{{ e.stdin }}</code></pre>
-                  <p class="mb-1"><strong>Sample output {{ loop.index }}:</strong></p>
-                  <pre class="bg-light border rounded p-2"><code>{{ e.stdout }}</code></pre>
+                  {% set ex_n = loop.index %}
+                  {% if q.spec.kind != "program" %}
+                    <p class="mb-1"><strong>Example {{ ex_n }}:</strong></p>
+                    <pre class="bg-light border rounded p-2"><code>{% if is_c %}{{ e.call }}  →  {{ e.result }}{% else %}&gt;&gt;&gt; {{ e.call }}
+{{ e.result }}{% endif %}</code></pre>
+                  {% endif %}
+                  {% for name, content in (e.files or {}).items() %}
+                    <p class="mb-1"><strong>{% if q.spec.kind == "program" %}Sample {{ ex_n }}: {% endif %}<code>{{ name }}</code> contains:</strong></p>
+                    <pre class="bg-light border rounded p-2"><code>{{ content or "(empty file)" }}</code></pre>
+                  {% endfor %}
+                  {% if q.spec.kind == "program" %}
+                    {% if e.stdin and e.stdin.strip() %}
+                    <p class="mb-1"><strong>Sample input {{ ex_n }}:</strong></p>
+                    <pre class="bg-light border rounded p-2"><code>{{ e.stdin }}</code></pre>
+                    {% endif %}
+                    <p class="mb-1"><strong>Sample output {{ ex_n }}:</strong></p>
+                    <pre class="bg-light border rounded p-2"><code>{{ e.stdout or "(nothing printed)" }}</code></pre>
+                  {% endif %}
+                  {% for name, content in (e.out_files or {}).items() %}
+                    <p class="mb-1"><strong>Afterwards, <code>{{ name }}</code> contains:</strong></p>
+                    <pre class="bg-light border rounded p-2"><code>{{ content if content is not none else "(not created)" }}</code></pre>
+                  {% endfor %}
                 {% endfor %}
               {% else %}
                 <p class="mb-1"><strong>Examples:</strong></p>

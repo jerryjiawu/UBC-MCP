@@ -16,6 +16,7 @@ import tempfile
 import threading
 import uuid
 
+from . import fileio
 from .runner import dec, enc
 
 RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "runner.py")
@@ -57,6 +58,13 @@ CATEGORIES = {
     "integer_division": ("Integer division (lost the decimals)", 1.0),
     "output_format": ("Output format / spacing / precision mismatch", 0.5),
     "no_output": ("Printed nothing", 1.0),
+    # file I/O (see fileio.py)
+    "unchecked_fopen": ("Didn't handle a file that can't be opened (NULL from fopen)", 1.5),
+    "wrong_filename": ("Opened the wrong file name", 1.0),
+    "wrong_file_mode": ("Wrong file mode (\"r\" / \"w\" / \"a\")", 1.0),
+    "file_not_created": ("Output file not written", 1.0),
+    "file_not_closed": ("Forgot to fclose a file", 0.5),
+    "feof_loop": ("while (!feof(...)) loop (processes the last value twice)", 1.0),
 }
 
 _EXC_MAP = {
@@ -80,15 +88,34 @@ _EXC_MAP = {
 
 # --------------------------------------------------------------------- running
 
-def run_function(code, func, tests_args):
+def run_tests(code, spec, tests):
+    """Like run_function over every test; file questions run each test in a fresh
+    folder holding only that test's input files, and read back its output files."""
+    func = spec["function"]
+    if not fileio.has_files(spec):
+        return run_function(code, func, [t["args"] for t in tests])
+    outs = spec.get("output_files") or []
+    results = []
+    for t in tests:
+        run = run_function(code, func, [t["args"]], t.get("files") or {}, outs)
+        if run["load_error"]:
+            return run
+        results.append(run["results"][0])
+    return {"load_error": None, "results": results}
+
+
+def run_function(code, func, tests_args, files=None, output_files=()):
     """Run `func` from `code` on each arg list. Returns
-    {"load_error": {...} | None, "results": [{"result"|"exc", "stdout"}, ...]}."""
+    {"load_error": {...} | None, "results": [{"result"|"exc", "stdout", "files"?}, ...]}."""
     encoded = [[enc(a) for a in args] for args in tests_args]
     results = [None] * len(encoded)
-    with tempfile.TemporaryDirectory(prefix="pp_") as tmp:
-        path = os.path.join(tmp, "solution.py")
+    with tempfile.TemporaryDirectory(prefix="pp_", ignore_cleanup_errors=True) as tmp:
+        path = os.path.join(tmp, "pp_solution", "solution.py")
+        os.makedirs(os.path.dirname(path))
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(code)
+        tmp = os.path.join(tmp, "work")
+        fileio.prepare_dir(tmp, files)
         start, restarts = 0, 0
         while start < len(encoded):
             load_error, next_i = _run_batch(path, func, encoded, start, results, tmp)
@@ -102,6 +129,11 @@ def run_function(code, func, tests_args):
                     results[i] = {"exc": {"type": "Timeout", "msg": "not run: too many timeouts"}}
                 break
             start = next_i
+        if output_files:
+            got = fileio.read_outputs(tmp, output_files)
+            for r in results:
+                if r is not None:
+                    r["files"] = got
     return {"load_error": None, "results": results}
 
 
@@ -284,7 +316,7 @@ def grade(code, spec, tests, visible=3):
               "load_error": None, "constraint_errors": [], "tests": []}
     func = spec["function"]
 
-    run = run_function(code, func, [t["args"] for t in tests])
+    run = run_tests(code, spec, tests)
     if run["load_error"]:
         le = run["load_error"]
         report["load_error"] = le
@@ -295,11 +327,33 @@ def grade(code, spec, tests, visible=3):
     shown_failures = 0
     for idx, (t, outcome) in enumerate(zip(tests, run["results"])):
         ok = outcome is not None and "result" in outcome and same(t["expected"], outcome["result"])
+        cat = None if ok else classify_failure(t, t["expected"], outcome)
+        if t.get("expected_files") and outcome is not None:
+            for name, exp in t["expected_files"].items():
+                got = (outcome.get("files") or {}).get(name)
+                if fileio.normalize(got) != fileio.normalize(exp):
+                    if got is None and exp is not None:
+                        ok, cat = False, "file_not_created"
+                    elif ok:
+                        ok, cat = False, "edge_case" if t.get("edge") else "wrong_answer"
+                    break
+        exc_type = (outcome or {}).get("exc", {}).get("type")
+        if exc_type in ("FileNotFoundError", "PermissionError", "IsADirectoryError"):
+            cat = "unchecked_fopen" if t.get("no_files") else "wrong_filename"
+        elif exc_type == "UnsupportedOperation":  # e.g. writing to a file opened with "r"
+            cat = "wrong_file_mode"
+        elif not ok and t.get("no_files") and cat != "timeout":
+            cat = "unchecked_fopen"
+        if fileio.has_files(spec) and outcome and cat != "timeout":
+            io_cats = fileio.io_problems([tuple(e) for e in outcome.get("io", [])], spec) - {"file_not_closed"}
+            if "wrong_filename" in io_cats:
+                ok, cat = False, "wrong_filename"  # fails even though Windows found the file
+            elif not ok and "wrong_file_mode" in io_cats:
+                cat = "wrong_file_mode"
         row = {"n": idx + 1, "ok": ok, "edge": t.get("edge", False)}
         if ok:
             report["passed"] += 1
         else:
-            cat = classify_failure(t, t["expected"], outcome)
             row["category"] = cat
             report["categories"][cat] = report["categories"].get(cat, 0) + 1
             # Like a real exam autograder: details for the first few failures,
@@ -316,6 +370,11 @@ def grade(code, spec, tests, visible=3):
                     row["got"] = show(outcome["result"])
                 if outcome and outcome.get("stdout"):
                     row["stdout"] = outcome["stdout"][:500]
+                if fileio.has_files(spec):
+                    row["no_files"] = bool(t.get("no_files"))
+                    row["files_in"] = t.get("files") or {}
+                    row["expected_files"] = t.get("expected_files") or {}
+                    row["got_files"] = (outcome or {}).get("files") or {}
             else:
                 row["hidden"] = True
         report["tests"].append(row)
@@ -329,16 +388,18 @@ def grade(code, spec, tests, visible=3):
     return report
 
 
-def expected_outputs(spec, tests_args):
-    """Run the reference solution. Raises ValueError if it fails on any test."""
-    run = run_function(spec["reference"], spec["function"], tests_args)
+def expected_outputs(spec, tests):
+    """Run the reference solution; sets t["expected"] (and t["expected_files"]).
+    Raises ValueError if it fails on any test."""
+    run = run_tests(spec["reference"], spec, tests)
     if run["load_error"]:
         le = run["load_error"]
         raise ValueError(f"reference solution failed to load: {le['type']}: {le['msg']}")
-    out = []
-    for args, r in zip(tests_args, run["results"]):
+    for t, r in zip(tests, run["results"]):
         if r is None or "exc" in r:
             msg = r["exc"] if r else "no result"
-            raise ValueError(f"reference solution failed on {call_str(spec['function'], args)}: {msg}")
-        out.append(r["result"])
-    return out
+            raise ValueError(f"reference solution failed on {call_str(spec['function'], t['args'])}: {msg}")
+        t["expected"] = r["result"]
+        if fileio.has_files(spec):
+            t["expected_files"] = r.get("files") or {}
+    return tests

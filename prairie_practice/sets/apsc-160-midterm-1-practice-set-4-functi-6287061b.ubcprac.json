@@ -1,0 +1,168 @@
+{
+  "format": "ubc-practice/1",
+  "title": "APSC 160 Midterm 1 Practice \u2014 Set 4 (Functions)",
+  "description": "",
+  "settings": {
+    "time_limit_min": 60,
+    "max_attempts": 5,
+    "language": "c"
+  },
+  "questions": [
+    {
+      "title": "Q2 \u00b7 parkingFee function",
+      "prompt": "**[10] Q2** A campus parkade charges by the length of a stay in whole minutes:\n\n* **30 minutes or less**: free ($0.00)\n* **31 to 120 minutes**: a flat $4.00\n* **more than 120 minutes**: $4.00 plus **$1.75 for each started 30-minute block** beyond 120 minutes (so 121\u2013150 min costs $5.75, and 151\u2013180 min costs $7.50)\n\nWrite the function\n\n```c\ndouble parkingFee(int minutes);\n```\n\nthat returns the fee for a stay of `minutes` (you may assume `minutes >= 0`). Write **only** the function, not `main`. Include a short comment describing its purpose, parameter and return value.",
+      "reference": "/* Returns the parking fee in dollars for a stay of the given number of minutes. */\ndouble parkingFee(int minutes) {\n    int extra;\n    if (minutes <= 30)\n        return 0.0;\n    if (minutes <= 120)\n        return 4.00;\n    extra = (minutes - 120 + 29) / 30;\n    return 4.00 + extra * 1.75;\n}",
+      "language": "c",
+      "topic": "functions",
+      "difficulty": 2,
+      "points": 10,
+      "constraints": {},
+      "edge_cases": [
+        [
+          0
+        ],
+        [
+          30
+        ],
+        [
+          31
+        ],
+        [
+          120
+        ],
+        [
+          121
+        ],
+        [
+          150
+        ],
+        [
+          151
+        ]
+      ],
+      "num_tests": 10,
+      "function": "parkingFee",
+      "kind": "function",
+      "params": [
+        {
+          "input": "int(0..400)",
+          "name": "minutes",
+          "type": "int"
+        }
+      ],
+      "returns": "double",
+      "visible_failures": 3,
+      "inputs": {
+        "minutes": "int(0..400)"
+      },
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\ndouble parkingFee(int minutes)\n{\n    /* TODO: your code here */\n\n    return 0.0;\n}\n",
+      "examples": [
+        {
+          "call": "parkingFee(332)",
+          "result": "returns 18"
+        },
+        {
+          "call": "parkingFee(359)",
+          "result": "returns 18"
+        },
+        {
+          "call": "parkingFee(0)",
+          "result": "returns 0"
+        }
+      ]
+    },
+    {
+      "title": "Q3 \u00b7 digitalRoot function (nested loops)",
+      "prompt": "**[10] Q3** The *digital root* of a non-negative integer is found by repeatedly adding up its digits until a single digit remains. For example, 9875 \u2192 9+8+7+5 = 29 \u2192 2+9 = 11 \u2192 1+1 = **2**. The digital root of a single-digit number is the number itself.\n\nWrite the function\n\n```c\nint digitalRoot(int n);\n```\n\nthat returns the digital root of `n` (assume `n >= 0`). Use loops and the `%` and `/` operators. Do **not** use the shortcut formula 1 + (n\u22121) % 9. Write only the function, with a documentation comment.\n\n| call | returns |\n|---|---|\n| `digitalRoot(38)` | 2 |\n| `digitalRoot(9875)` | 2 |\n| `digitalRoot(7)` | 7 |\n| `digitalRoot(0)` | 0 |",
+      "reference": "/* Returns the digital root of n (n >= 0). */\nint digitalRoot(int n) {\n    int sum;\n    while (n >= 10) {\n        sum = 0;\n        while (n > 0) {\n            sum += n % 10;\n            n /= 10;\n        }\n        n = sum;\n    }\n    return n;\n}",
+      "language": "c",
+      "topic": "functions",
+      "difficulty": 3,
+      "points": 10,
+      "constraints": {},
+      "edge_cases": [
+        [
+          0
+        ],
+        [
+          7
+        ],
+        [
+          10
+        ],
+        [
+          38
+        ],
+        [
+          999999
+        ]
+      ],
+      "num_tests": 10,
+      "function": "digitalRoot",
+      "kind": "function",
+      "params": [
+        {
+          "input": "int(0..2000000)",
+          "name": "n",
+          "type": "int"
+        }
+      ],
+      "returns": "int",
+      "visible_failures": 3,
+      "inputs": {
+        "n": "int(0..2000000)"
+      },
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint digitalRoot(int n)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "call": "digitalRoot(451602)",
+          "result": "returns 9"
+        },
+        {
+          "call": "digitalRoot(1537062)",
+          "result": "returns 6"
+        },
+        {
+          "call": "digitalRoot(0)",
+          "result": "returns 0"
+        }
+      ]
+    },
+    {
+      "title": "Q4 \u00b7 Hollow Box (program with your own functions)",
+      "prompt": "**[20] Q4** Write a complete, **structured** program that draws a hollow rectangle of `#` characters. Your program must define and use these three functions (write prototypes above `main` and documentation comments for each):\n\n```c\nint getInRange(int min, int max);  /* prompts until min <= value <= max, returns it */\nvoid drawEdge(int width);          /* prints a full row of '#' then a newline */\nvoid drawMiddle(int width);        /* prints '#', width-2 spaces, '#', newline\n                                      (a single '#' when width is 1) */\n```\n\n`getInRange` must print the prompt `Enter a value (<min>-<max>): `. On invalid input it prints `Error: value must be between <min> and <max>.` on its own line, then prompts again.\n\n`main` must:\n\n1. print `Width:` on its own line, then call `getInRange(1, 20)`\n2. print `Height:` on its own line, then call `getInRange(1, 20)`\n3. draw the rectangle: the first and last rows use `drawEdge`, every other row uses `drawMiddle`. A height of 1 is a single edge row.\n\nUse symbolic constants for 1 and 20.\n\nSample run:\n\n```\nWidth:\nEnter a value (1-20): 25\nError: value must be between 1 and 20.\nEnter a value (1-20): 6\nHeight:\nEnter a value (1-20): 0\nError: value must be between 1 and 20.\nEnter a value (1-20): 4\n######\n#    #\n#    #\n######\n```",
+      "reference": "#include <stdio.h>\n#define MIN_SIZE 1\n#define MAX_SIZE 20\n\nint getInRange(int min, int max);\nvoid drawEdge(int width);\nvoid drawMiddle(int width);\n\nint main(void) {\n    int width, height, row;\n    printf(\"Width:\\n\");\n    width = getInRange(MIN_SIZE, MAX_SIZE);\n    printf(\"Height:\\n\");\n    height = getInRange(MIN_SIZE, MAX_SIZE);\n    for (row = 1; row <= height; row++) {\n        if (row == 1 || row == height)\n            drawEdge(width);\n        else\n            drawMiddle(width);\n    }\n    return 0;\n}\n\n/* Repeatedly prompts until an integer in [min, max] is entered; returns it. */\nint getInRange(int min, int max) {\n    int value;\n    printf(\"Enter a value (%d-%d): \", min, max);\n    scanf(\"%d\", &value);\n    while (value < min || value > max) {\n        printf(\"Error: value must be between %d and %d.\\n\", min, max);\n        printf(\"Enter a value (%d-%d): \", min, max);\n        scanf(\"%d\", &value);\n    }\n    return value;\n}\n\n/* Prints a full row of '#' of the given width. */\nvoid drawEdge(int width) {\n    int i;\n    for (i = 0; i < width; i++)\n        printf(\"#\");\n    printf(\"\\n\");\n}\n\n/* Prints '#', then spaces, then '#' (a single '#' if width is 1). */\nvoid drawMiddle(int width) {\n    int i;\n    printf(\"#\");\n    for (i = 2; i < width; i++)\n        printf(\" \");\n    if (width > 1)\n        printf(\"#\");\n    printf(\"\\n\");\n}",
+      "language": "c",
+      "topic": "functions",
+      "difficulty": 3,
+      "points": 20,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "badH": "int(-10..0)",
+        "badW": "int(21..60)",
+        "h": "int(1..12)",
+        "w": "int(1..20)"
+      },
+      "kind": "program",
+      "stdin": "{badW}\n{w}\n{badH}\n{h}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "36\n3\n-1\n2\n",
+          "stdout": "Width:\nEnter a value (1-20): Error: value must be between 1 and 20.\nEnter a value (1-20): Height:\nEnter a value (1-20): Error: value must be between 1 and 20.\nEnter a value (1-20): ###\n###\n"
+        },
+        {
+          "stdin": "48\n3\n-1\n6\n",
+          "stdout": "Width:\nEnter a value (1-20): Error: value must be between 1 and 20.\nEnter a value (1-20): Height:\nEnter a value (1-20): Error: value must be between 1 and 20.\nEnter a value (1-20): ###\n# #\n# #\n# #\n# #\n###\n"
+        }
+      ]
+    }
+  ]
+}

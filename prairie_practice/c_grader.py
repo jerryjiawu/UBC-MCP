@@ -29,6 +29,8 @@ import tempfile
 import threading
 import uuid
 
+from . import fileio
+
 PER_TEST_TIMEOUT = 2.0
 MAX_RESTARTS = 1
 COMPILE_TIMEOUT = 120  # the very first compile builds zig's libc cache (~30s)
@@ -56,6 +58,9 @@ WARNING_CATEGORIES = [
     (r"format specifies type|-Wformat", "format_specifier"),
 ]
 
+# `while (!feof(f))` reads past the last value, so the last item is processed twice
+FEOF_LOOP = re.compile(r"while\s*\(\s*!\s*feof\s*\(")
+
 ERROR_CATEGORIES = [
     (r"conflicting types for|too (many|few) arguments to function call", "wrong_signature"),
     (r"undefined symbol|undefined reference", "missing_function"),
@@ -77,24 +82,116 @@ def compiler_available():
 
 # --------------------------------------------------------------- compiling
 
+# Force-included (-include pp_io.h) ahead of every C file, so the student's
+# stdio calls go through logging wrappers in pp_io.c (log path: $PP_IO_LOG).
+# The wrappers also make file mistakes behave like Linux, where PrairieLearn's
+# grader runs: using a NULL FILE* crashes (Windows' C runtime would just return
+# an error), so an unchecked fopen shows up as a crash, not a silent pass.
+_IO_HEADER = r"""#ifndef PP_IO_H
+#define PP_IO_H
+#include <stdio.h>
+FILE *pp_fopen(const char *name, const char *mode);
+int pp_fclose(FILE *f);
+int pp_fscanf(FILE *f, const char *fmt, ...) __attribute__((format(scanf, 2, 3)));
+int pp_fprintf(FILE *f, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+char *pp_fgets(char *s, int n, FILE *f);
+int pp_fgetc(FILE *f);
+int pp_fputc(int c, FILE *f);
+int pp_fputs(const char *s, FILE *f);
+int pp_feof(FILE *f);
+void pp_rewind(FILE *f);
+#define fopen pp_fopen
+#define fclose pp_fclose
+#define fscanf pp_fscanf
+#define fprintf pp_fprintf
+#define fgets pp_fgets
+#define fgetc pp_fgetc
+#define fputc pp_fputc
+#define fputs pp_fputs
+#define feof pp_feof
+#define rewind pp_rewind
+#endif
+"""
+
+_IO_SHIM = r"""#undef fopen
+#undef fclose
+#undef fscanf
+#undef fprintf
+#undef fgets
+#undef fgetc
+#undef fputc
+#undef fputs
+#undef feof
+#undef rewind
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+static FILE *pp_log(void) {
+    static FILE *f;
+    static int tried;
+    if (!tried) { const char *p = getenv("PP_IO_LOG"); tried = 1; if (p) f = fopen(p, "a"); }
+    return f;
+}
+static void pp_null(const char *fn) {
+    FILE *l = pp_log();
+    if (l) { fprintf(l, "NULL\t%s\n", fn); fflush(l); }
+    *(volatile int *)0 = 0;  /* crash like glibc does on a NULL FILE* */
+}
+FILE *pp_fopen(const char *name, const char *mode) {
+    FILE *r = fopen(name, mode);
+    FILE *l = pp_log();
+    if (l) { fprintf(l, "OPEN\t%s\t%s\t%d\n", name ? name : "", mode ? mode : "", r != NULL); fflush(l); }
+    return r;
+}
+int pp_fclose(FILE *f) {
+    FILE *l = pp_log();
+    if (!f) pp_null("fclose");
+    if (l) { fprintf(l, "CLOSE\t1\n"); fflush(l); }
+    return fclose(f);
+}
+int pp_fscanf(FILE *f, const char *fmt, ...) {
+    if (!f) pp_null("fscanf");
+    va_list ap; va_start(ap, fmt); int r = vfscanf(f, fmt, ap); va_end(ap); return r;
+}
+int pp_fprintf(FILE *f, const char *fmt, ...) {
+    if (!f) pp_null("fprintf");
+    va_list ap; va_start(ap, fmt); int r = vfprintf(f, fmt, ap); va_end(ap); return r;
+}
+char *pp_fgets(char *s, int n, FILE *f) { if (!f) pp_null("fgets"); return fgets(s, n, f); }
+int pp_fgetc(FILE *f) { if (!f) pp_null("fgetc"); return fgetc(f); }
+int pp_fputc(int c, FILE *f) { if (!f) pp_null("fputc"); return fputc(c, f); }
+int pp_fputs(const char *s, FILE *f) { if (!f) pp_null("fputs"); return fputs(s, f); }
+int pp_feof(FILE *f) { if (!f) pp_null("feof"); return feof(f); }
+void pp_rewind(FILE *f) { if (!f) pp_null("rewind"); rewind(f); }
+__attribute__((constructor)) static void pp_unbuffer(void) { setvbuf(stdout, NULL, _IONBF, 0); }
+"""
+
+_PP_NAMES = re.compile(r"\bpp_(fopen|fclose|fscanf|fprintf|fgets|fgetc|fputc|fputs|feof|rewind)\b")
+
+
 def compile_c(sources, exe, cwd):
     """Returns (ok, diagnostics_text). Diagnostics have temp paths stripped."""
     if not compiler_available():
         raise CompilerMissing("C questions need the zig compiler: run `pip install ziglang` in the app's venv")
+    with open(os.path.join(cwd, "pp_io.c"), "w", encoding="utf-8") as fh:
+        fh.write(_IO_SHIM)
+    with open(os.path.join(cwd, "pp_io.h"), "w", encoding="utf-8") as fh:
+        fh.write(_IO_HEADER)
     cmd = [sys.executable, "-m", "ziglang", "cc", "-std=c11", "-O0", "-g0", "-Wall",
            "-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-but-set-variable",
-           "-fno-sanitize=all", "-fno-caret-diagnostics", "-o", exe] + sources
+           "-fno-sanitize=all", "-fno-caret-diagnostics", "-include", "pp_io.h",
+           "-o", exe] + sources + ["pp_io.c"]
     try:
         r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=COMPILE_TIMEOUT, creationflags=_NOWIN)
     except subprocess.TimeoutExpired:
         return False, "compiler timed out"
     text = (r.stdout + r.stderr).replace(cwd + os.sep, "").replace(cwd.replace("\\", "/") + "/", "")
-    # zig prints a trailing build summary on failure; keep only clang's lines
+    text = _PP_NAMES.sub(r"\1", text)
     # drop zig driver noise (its build summary, "argument unused" warnings); keep clang's lines
     lines = [ln for ln in text.splitlines()
-             if not ln.startswith(("error: the following command", "error: unable to", "    ", "zig: "))
-             or "solution.c" in ln]
+             if (not ln.startswith(("error: the following command", "error: unable to", "    ", "zig"))
+                 and "unused during compilation" not in ln) or "solution.c" in ln]
     return r.returncode == 0 and os.path.exists(os.path.join(cwd, exe)), "\n".join(lines).strip()
 
 
@@ -288,10 +385,12 @@ def build_harness(spec, tests, nonce):
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
     int start = argc > 1 ? atoi(argv[1]) : 0;
-    for (int i = start; i < %d; i++) {
+    int end = argc > 2 ? atoi(argv[2]) : %d;
+    int runs = argc > 3 ? atoi(argv[3]) : 3;  /* bit 0: canary run 0, bit 1: canary run 1 */
+    for (int i = start; i < end; i++) {
         printf("\n%sB %%d\n", i);
-        pp_tests[i](0);
-        pp_tests[i](1);
+        if (runs & 1) pp_tests[i](0);
+        if (runs & 2) pp_tests[i](1);
     }
     printf("\n%sDONE\n");
     return 0;
@@ -313,7 +412,7 @@ def _print_scalar(ctype, expr):
 def run_function_tests(code, spec, tests):
     """-> {"compile_ok", "compiler_output", "results": [{"r0", "r1", "stdout"} | {"crash"} | {"timeout"}]}"""
     nonce = "PP" + uuid.uuid4().hex[:12]
-    with tempfile.TemporaryDirectory(prefix="ppc_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="ppc_", ignore_cleanup_errors=True) as tmp:
         with open(os.path.join(tmp, "solution.c"), "w", encoding="utf-8") as fh:
             fh.write(code)
         with open(os.path.join(tmp, "harness.c"), "w", encoding="utf-8") as fh:
@@ -322,6 +421,9 @@ def run_function_tests(code, spec, tests):
         if not ok:
             return {"compile_ok": False, "compiler_output": diag, "results": []}
         exe = os.path.join(tmp, "harness.exe")
+        if fileio.has_files(spec):
+            results = _run_function_tests_with_files(exe, nonce, spec, tests, tmp)
+            return {"compile_ok": True, "compiler_output": diag, "results": results}
         results = [None] * len(tests)
         start, timeouts = 0, 0
         while start < len(tests):
@@ -338,9 +440,48 @@ def run_function_tests(code, spec, tests):
         return {"compile_ok": True, "compiler_output": diag, "results": results}
 
 
-def _run_harness(exe, nonce, start, total, results, cwd):
-    proc = subprocess.Popen([exe, str(start)], cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL, creationflags=_NOWIN)
+def _run_function_tests_with_files(exe, nonce, spec, tests, tmp):
+    """File questions: every test (and each of its two canary runs) gets a fresh
+    folder with only its input files, so runs can't see each other's output."""
+    results = [None] * len(tests)
+    timeouts = 0
+    out_names = spec.get("output_files") or []
+    for i, t in enumerate(tests):
+        if timeouts > MAX_RESTARTS:
+            results[i] = {"timeout": True, "msg": "not run: too many timeouts"}
+            continue
+        merged = {}
+        for v in (0, 1):
+            run_dir = os.path.join(tmp, f"t{i}v{v}")
+            fileio.prepare_dir(run_dir, t.get("files"))
+            log = os.path.join(tmp, f"io_t{i}v{v}.log")
+            one = [None] * len(tests)
+            _, timed_out = _run_harness(exe, nonce, i, len(tests), one, run_dir, end=i + 1, runs=1 << v,
+                                        env=dict(os.environ, PP_IO_LOG=log))
+            r = one[i] or {"crash": "other_exception", "msg": "no result"}
+            if timed_out or "r%d" % v not in r:
+                timeouts += timed_out
+                merged = r
+                merged["files"] = fileio.read_outputs(run_dir, out_names)
+                merged["io"] = fileio.read_log(log)
+                break
+            merged[f"r{v}"] = r[f"r{v}"]
+            merged["stdout"] = r.get("stdout", "")
+            files = fileio.read_outputs(run_dir, out_names)
+            if v == 0:
+                merged["files"] = files
+                merged["io"] = fileio.read_log(log)
+            elif files != merged["files"]:
+                merged["r1"] = dict(merged["r1"], __files_differ=1)  # garbage written to a file
+        results[i] = merged
+    return results
+
+
+def _run_harness(exe, nonce, start, total, results, cwd, end=None, runs=3, env=None):
+    args = [exe, str(start)] + ([str(end), str(runs)] if end is not None else [])
+    total = end if end is not None else total
+    proc = subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, creationflags=_NOWIN, env=env)
     q = queue.Queue()
 
     def pump():
@@ -372,7 +513,7 @@ def _run_harness(exe, nonce, start, total, results, cwd):
                 _, i, v, payload = line.rstrip("\n").split(" ", 3)
                 r = results[int(i)] or {}
                 r[f"r{v}"] = json.loads(payload)
-                if v == "1":
+                if v == "1" or "stdout" not in r:
                     r["stdout"] = "".join(printed).strip("\n")[:2000]
                 printed = []
                 results[int(i)] = r
@@ -386,90 +527,72 @@ def _run_harness(exe, nonce, start, total, results, cwd):
         proc.wait()
 
 
-_UNBUFFER = """#include <stdio.h>
-__attribute__((constructor)) static void pp_unbuffer(void) { setvbuf(stdout, NULL, _IONBF, 0); }
-"""
-
-
-def run_program_tests(code, stdins):
-    """-> {"compile_ok", "compiler_output", "results": [{"stdout", "crash"?, "timeout"?}]}"""
-    with tempfile.TemporaryDirectory(prefix="ppc_") as tmp:
+def run_program_tests(code, tests, output_files=()):
+    """tests: [{"stdin", "files"}] -> {"compile_ok", "compiler_output",
+    "results": [{"stdout", "files", "io", "crash"?, "timeout"?}]}"""
+    with tempfile.TemporaryDirectory(prefix="ppc_", ignore_cleanup_errors=True) as tmp:
         with open(os.path.join(tmp, "solution.c"), "w", encoding="utf-8") as fh:
             fh.write(code)
-        with open(os.path.join(tmp, "pp_unbuffer.c"), "w", encoding="utf-8") as fh:
-            fh.write(_UNBUFFER)
-        ok, diag = compile_c(["solution.c", "pp_unbuffer.c"], "solution.exe", tmp)
+        ok, diag = compile_c(["solution.c"], "solution.exe", tmp)
         if not ok:
             return {"compile_ok": False, "compiler_output": diag, "results": []}
         exe = os.path.join(tmp, "solution.exe")
         results = []
         timeouts = 0
-        for stdin in stdins:
+        for i, t in enumerate(tests):
             if timeouts > MAX_RESTARTS:
                 results.append({"timeout": True, "stdout": "", "msg": "not run: too many timeouts"})
                 continue
+            run_dir = os.path.join(tmp, f"t{i}")
+            fileio.prepare_dir(run_dir, t.get("files"))
+            log = os.path.join(tmp, f"io_t{i}.log")
             try:
-                r = subprocess.run([exe], cwd=tmp, input=stdin.encode(), capture_output=True,
-                                   timeout=PER_TEST_TIMEOUT, creationflags=_NOWIN)
+                r = subprocess.run([exe], cwd=run_dir, input=(t.get("stdin") or "").encode(),
+                                   capture_output=True, timeout=PER_TEST_TIMEOUT, creationflags=_NOWIN,
+                                   env=dict(os.environ, PP_IO_LOG=log))
                 res = {"stdout": r.stdout.decode("utf-8", "replace").replace("\r\n", "\n")[:5000]}
                 crash = _crash(r.returncode)
                 if crash:
                     res["crash"], res["msg"] = crash
-                results.append(res)
             except subprocess.TimeoutExpired as e:
                 timeouts += 1
-                results.append({"timeout": True,
-                                "stdout": (e.stdout or b"").decode("utf-8", "replace").replace("\r\n", "\n")[:2000]})
+                res = {"timeout": True,
+                       "stdout": (e.stdout or b"").decode("utf-8", "replace").replace("\r\n", "\n")[:2000]}
+            res["files"] = fileio.read_outputs(run_dir, output_files)
+            res["io"] = fileio.read_log(log)
+            results.append(res)
         return {"compile_ok": True, "compiler_output": diag, "results": results}
 
 
 # --------------------------------------------------------------- expected
 
-def render_stdin(spec, args):
-    vals = {name: v for name, v in zip(spec["inputs"], args)}
-
-    def fmt(v):
-        if isinstance(v, list):
-            if v and isinstance(v[0], list):
-                return "\n".join(" ".join(fmt(x) for x in row) for row in v)
-            return " ".join(fmt(x) for x in v)
-        if isinstance(v, float):
-            return repr(v)
-        return str(v)
-
-    def sub(m):
-        key = m.group(1)
-        if key.startswith("len:"):
-            return str(len(vals[key[4:]]))
-        return fmt(vals[key])
-
-    return re.sub(r"\{([a-zA-Z_:][a-zA-Z0-9_:]*)\}", sub, spec["stdin"])
-
-
 def expected_outputs(spec, tests):
+    """Run the reference on every test; sets t["expected"] and t["expected_files"].
+    Tests already carry their rendered "stdin" and input "files"."""
+    out_names = spec.get("output_files") or []
     if spec.get("kind") == "program":
-        stdins = [render_stdin(spec, t["args"]) for t in tests]
-        run = run_program_tests(spec["reference"], stdins)
+        run = run_program_tests(spec["reference"], tests, out_names)
         if not run["compile_ok"]:
             raise ValueError("reference solution failed to compile:\n" + run["compiler_output"][:1500])
-        out = []
-        for stdin, r in zip(stdins, run["results"]):
+        for t, r in zip(tests, run["results"]):
             if r.get("crash") or r.get("timeout"):
-                raise ValueError(f"reference program failed on input {stdin!r}: {r.get('msg', 'timeout')}")
-            out.append(r["stdout"])
-        return out, stdins
+                raise ValueError(f"reference program failed on input {t.get('stdin')!r} "
+                                 f"(files {sorted(t.get('files') or {})}): {r.get('msg', 'timeout')}")
+            t["expected"] = r["stdout"]
+            t["expected_files"] = r["files"]
+        return tests
     run = run_function_tests(spec["reference"], spec, tests)
     if not run["compile_ok"]:
         raise ValueError("reference solution failed to compile:\n" + run["compiler_output"][:1500])
-    out = []
     for t, r in zip(tests, run["results"]):
         if not r or "r0" not in r:
             raise ValueError(f"reference solution failed on {call_str(spec, t['args'])}: "
                              f"{(r or {}).get('msg', 'timeout')}")
-        if r["r0"] != r["r1"] or not r["r0"].get("__canary_ok", 1):
+        if r["r0"] != r.get("r1", r["r0"]) or not r["r0"].get("__canary_ok", 1):
             raise ValueError(f"reference solution reads/writes out of bounds on {call_str(spec, t['args'])}")
-        out.append({k: v for k, v in r["r0"].items() if k != "__canary_ok"})
-    return out, None
+        t["expected"] = {k: v for k, v in r["r0"].items() if k != "__canary_ok"}
+        t["expected_files"] = r.get("files") or {}
+    return tests
 
 
 # ---------------------------------------------------------------- display
@@ -634,6 +757,14 @@ def check_constraints(code, spec):
     return problems
 
 
+def _describe_io(e):
+    if e[0] == "open":
+        return f'fopen("{e[1]}", "{e[2]}") -> {"ok" if e[3] else "NULL"}'
+    if e[0] == "null":
+        return f"{e[1]}() called with a NULL FILE* -> crash"
+    return "fclose()"
+
+
 # ------------------------------------------------------------------ grade
 
 def grade(code, spec, tests, visible=3):
@@ -643,7 +774,7 @@ def grade(code, spec, tests, visible=3):
     is_program = spec.get("kind") == "program"
     try:
         if is_program:
-            run = run_program_tests(code, [t["stdin"] for t in tests])
+            run = run_program_tests(code, tests, spec.get("output_files") or [])
         else:
             run = run_function_tests(code, spec, tests)
     except CompilerMissing as e:
@@ -677,15 +808,22 @@ def grade(code, spec, tests, visible=3):
     garbage_cause = next((c for c in ("uninitialized_variable", "missing_return") if c in warning_cats),
                          "out_of_bounds")
 
+    uses_files = fileio.has_files(spec)
+    soft_cats = set()  # tracked, but don't fail a test (e.g. forgot fclose)
     shown = 0
     for idx, (t, r) in enumerate(zip(tests, run["results"])):
         row = {"n": idx + 1, "ok": False, "edge": t.get("edge", False)}
         r = r or {"crash": "other_exception", "msg": "no result"}
+        io_cats = fileio.io_problems(r.get("io", []), spec) if uses_files else set()
+        if "file_not_closed" in io_cats and not (r.get("crash") or r.get("timeout")):
+            soft_cats.add("file_not_closed")
         got_text = None
         if r.get("timeout"):
             cat, got_text = "timeout", r.get("msg") or f"no result after {PER_TEST_TIMEOUT:.0f}s (infinite loop?)"
         elif r.get("crash"):
             cat, got_text = r["crash"], r["msg"]
+            if uses_files and "unchecked_fopen" in io_cats:
+                cat = "unchecked_fopen"  # used the NULL FILE* that fopen returned
         elif is_program:
             if normalize_output(r["stdout"]) == normalize_output(t["expected"]):
                 cat = None
@@ -708,6 +846,31 @@ def grade(code, spec, tests, visible=3):
             if r0 and got_text is None:
                 got_text = show_result(spec, r0)
 
+        # output files are graded too
+        generic = (None, "wrong_answer", "edge_case", "no_output", "output_format", "off_by_one")
+        if cat in generic and t.get("expected_files"):
+            for name, exp in t["expected_files"].items():
+                got = (r.get("files") or {}).get(name)
+                if fileio.normalize(got) == fileio.normalize(exp):
+                    continue
+                if got is None and exp is not None:
+                    cat = "file_not_created"  # explains a wrong screen output too
+                elif cat is not None:
+                    pass  # keep the screen-output diagnosis
+                elif exp is None:
+                    cat = "edge_case" if t.get("edge") else "wrong_answer"
+                else:
+                    cat = classify_program_mismatch(fileio.normalize(exp), fileio.normalize(got), t.get("edge"))
+                break
+        if cat is not None and cat != "timeout" and t.get("no_files"):
+            cat = "unchecked_fopen"  # the missing-file test: didn't handle fopen failing
+        # a wrong file name fails even if Windows' case-insensitive files let it work
+        if "wrong_filename" in io_cats and cat != "timeout":
+            cat = "wrong_filename"
+        # opening with the wrong mode explains whatever else went wrong
+        elif cat is not None and cat != "timeout" and "wrong_file_mode" in io_cats:
+            cat = "wrong_file_mode"
+
         if cat is None:
             row["ok"] = True
             report["passed"] += 1
@@ -716,6 +879,12 @@ def grade(code, spec, tests, visible=3):
             report["categories"][cat] = report["categories"].get(cat, 0) + 1
             if shown < visible:
                 shown += 1
+                if uses_files:
+                    row["no_files"] = bool(t.get("no_files"))
+                    row["files_in"] = t.get("files") or {}
+                    row["expected_files"] = t.get("expected_files") or {}
+                    row["got_files"] = r.get("files") or {}
+                    row["io"] = [_describe_io(e) for e in r.get("io", [])][:12]
                 if is_program:
                     row["stdin"] = t["stdin"]
                     row["expected"] = t["expected"]
@@ -738,6 +907,10 @@ def grade(code, spec, tests, visible=3):
     if report["passed"] < total:
         for wcat in warning_cats:
             report["categories"].setdefault(wcat, 1)
+    for c in soft_cats:
+        report["categories"].setdefault(c, 1)
+    if report["passed"] < total and FEOF_LOOP.search(_strip_comments_strings(code)):
+        report["categories"].setdefault("feof_loop", 1)
     violations = check_constraints(code, spec)
     if violations:
         report["constraint_errors"] = violations

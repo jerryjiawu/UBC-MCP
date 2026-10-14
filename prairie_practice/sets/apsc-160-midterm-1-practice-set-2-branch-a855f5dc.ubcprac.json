@@ -1,0 +1,108 @@
+{
+  "format": "ubc-practice/1",
+  "title": "APSC 160 Midterm 1 Practice \u2014 Set 2 (Branching & Loops)",
+  "description": "",
+  "settings": {
+    "time_limit_min": 60,
+    "max_attempts": 5,
+    "language": "c"
+  },
+  "questions": [
+    {
+      "title": "Q2 \u00b7 Gym Membership (validation + tiers)",
+      "prompt": "**[15] Q2** Write a complete program that:\n\n* repeatedly prompts the user with `Enter age (1-120): ` until an age between 1 and 120 **inclusive** is entered. If the age is not valid, print `Error: age must be between 1 and 120.` (on its own line) before prompting again.\n* prints the monthly gym fee to **2 decimal places** according to the table:\n\n| age | monthly fee |\n|---|---|\n| child \u2013 under 13 | $15.00 |\n| youth \u2013 13 to 24 inclusive | $25.50 |\n| adult \u2013 25 to 64 inclusive | $39.99 |\n| senior \u2013 65 or older | $22.75 |\n\nUse symbolic constants for the age limits and avoid redundant Boolean expressions.\n\nSample run:\n\n```\nEnter age (1-120): 0\nError: age must be between 1 and 120.\nEnter age (1-120): 300\nError: age must be between 1 and 120.\nEnter age (1-120): 70\nMonthly fee: $22.75\n```",
+      "reference": "#include <stdio.h>\n#define MIN_AGE 1\n#define MAX_AGE 120\nint main(void) {\n    int age;\n    double fee;\n    printf(\"Enter age (1-120): \");\n    scanf(\"%d\", &age);\n    while (age < MIN_AGE || age > MAX_AGE) {\n        printf(\"Error: age must be between 1 and 120.\\n\");\n        printf(\"Enter age (1-120): \");\n        scanf(\"%d\", &age);\n    }\n    if (age < 13)\n        fee = 15.00;\n    else if (age < 25)\n        fee = 25.50;\n    else if (age < 65)\n        fee = 39.99;\n    else\n        fee = 22.75;\n    printf(\"Monthly fee: $%.2lf\\n\", fee);\n    return 0;\n}",
+      "language": "c",
+      "topic": "conditionals",
+      "difficulty": 2,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "age": "int(1..120)",
+        "high": "int(121..500)",
+        "low": "int(-30..0)"
+      },
+      "kind": "program",
+      "stdin": "{low}\n{high}\n{age}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "-5\n492\n116\n",
+          "stdout": "Enter age (1-120): Error: age must be between 1 and 120.\nEnter age (1-120): Error: age must be between 1 and 120.\nEnter age (1-120): Monthly fee: $22.75\n"
+        },
+        {
+          "stdin": "-28\n238\n21\n",
+          "stdout": "Enter age (1-120): Error: age must be between 1 and 120.\nEnter age (1-120): Error: age must be between 1 and 120.\nEnter age (1-120): Monthly fee: $25.50\n"
+        }
+      ]
+    },
+    {
+      "title": "Q3 \u00b7 Sensor Readings (sentinel loop)",
+      "prompt": "**[15] Q3** Write a complete program that prints `Enter readings (negative to stop):` on its own line, then reads non-negative readings (type `double`) until a **negative** value is entered. The negative value is a sentinel and is **not** part of the data.\n\nWhen the sentinel is read, print:\n\n```\nReadings: <count>\nMinimum: <smallest, 1 decimal place>\nMaximum: <largest, 1 decimal place>\nAverage: <mean, 2 decimal places>\n```\n\nIf the very first value is negative, print only `No readings entered.`\n\nSample runs:\n\n```\nEnter readings (negative to stop):\n12.5 3 40.75 -1\nReadings: 3\nMinimum: 3.0\nMaximum: 40.8\nAverage: 18.75\n```\n\n```\nEnter readings (negative to stop):\n-2\nNo readings entered.\n```",
+      "reference": "#include <stdio.h>\nint main(void) {\n    double r, min = 0, max = 0, sum = 0;\n    int count = 0;\n    printf(\"Enter readings (negative to stop):\\n\");\n    scanf(\"%lf\", &r);\n    while (r >= 0) {\n        if (count == 0 || r < min) min = r;\n        if (count == 0 || r > max) max = r;\n        sum += r;\n        count++;\n        scanf(\"%lf\", &r);\n    }\n    if (count == 0) {\n        printf(\"No readings entered.\\n\");\n    } else {\n        printf(\"Readings: %d\\n\", count);\n        printf(\"Minimum: %.1lf\\n\", min);\n        printf(\"Maximum: %.1lf\\n\", max);\n        printf(\"Average: %.2lf\\n\", sum / count);\n    }\n    return 0;\n}",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 2,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "nums": "list[float(0..100)](0..10)",
+        "stop": "int(-9..-1)"
+      },
+      "kind": "program",
+      "stdin": "{nums} {stop}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "88.61 48.4 -2\n",
+          "stdout": "Enter readings (negative to stop):\nReadings: 2\nMinimum: 48.4\nMaximum: 88.6\nAverage: 68.50\n"
+        },
+        {
+          "stdin": "72.99 80.28 87.04 -9\n",
+          "stdout": "Enter readings (negative to stop):\nReadings: 3\nMinimum: 73.0\nMaximum: 87.0\nAverage: 80.10\n"
+        }
+      ]
+    },
+    {
+      "title": "Q4 \u00b7 Digit Staircase (nested loops)",
+      "prompt": "**[10] Q4** Write a complete program that prompts the user with `Enter size (1-9): `, reads an integer `size` (you may assume it is between 1 and 9), and uses **nested loops** to print a square pattern with `size` rows and `size` columns. On row *r* (counting from 1), the first *r* characters are the digit *r* and the rest of the row is filled with `*`.\n\nSample runs:\n\n```\nEnter size (1-9): 4\n1***\n22**\n333*\n4444\n```\n\n```\nEnter size (1-9): 1\n1\n```",
+      "reference": "#include <stdio.h>\nint main(void) {\n    int size, row, col;\n    printf(\"Enter size (1-9): \");\n    scanf(\"%d\", &size);\n    row = 1;\n    while (row <= size) {\n        col = 1;\n        while (col <= size) {\n            if (col <= row)\n                printf(\"%d\", row);\n            else\n                printf(\"*\");\n            col++;\n        }\n        printf(\"\\n\");\n        row++;\n    }\n    return 0;\n}",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 2,
+      "points": 10,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "size": "int(1..9)"
+      },
+      "kind": "program",
+      "stdin": "{size}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "7\n",
+          "stdout": "Enter size (1-9): 1******\n22*****\n333****\n4444***\n55555**\n666666*\n7777777\n"
+        },
+        {
+          "stdin": "3\n",
+          "stdout": "Enter size (1-9): 1**\n22*\n333\n"
+        }
+      ]
+    }
+  ]
+}

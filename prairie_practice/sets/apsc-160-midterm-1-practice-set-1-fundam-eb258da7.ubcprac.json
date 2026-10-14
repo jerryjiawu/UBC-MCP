@@ -1,0 +1,105 @@
+{
+  "format": "ubc-practice/1",
+  "title": "APSC 160 Midterm 1 Practice \u2014 Set 1 (Fundamentals)",
+  "description": "",
+  "settings": {
+    "time_limit_min": 60,
+    "max_attempts": 5,
+    "language": "c"
+  },
+  "questions": [
+    {
+      "title": "Q2 \u00b7 Speed Conversion",
+      "prompt": "**[10] Q2** Write a complete program that:\n\n* prompts the user with `Enter speed in km/h: ` and reads a speed (a value of type `double`)\n* prints the speed converted to metres per second and to miles per hour, each to **2 decimal places**, exactly in the format shown below.\n\nUse symbolic constants (`#define`) for the conversion factors: 1 km/h = 1000/3600 m/s, and 1 mile = 1.609344 km.\n\nSample run (user input after the colon):\n\n```\nEnter speed in km/h: 88\n88.00 km/h = 24.44 m/s = 54.68 mph\n```",
+      "reference": "#include <stdio.h>\n#define KMH_TO_MS (1000.0 / 3600.0)\n#define KM_PER_MILE 1.609344\nint main(void) {\n    double kmh;\n    printf(\"Enter speed in km/h: \");\n    scanf(\"%lf\", &kmh);\n    printf(\"%.2lf km/h = %.2lf m/s = %.2lf mph\\n\", kmh, kmh * KMH_TO_MS, kmh / KM_PER_MILE);\n    return 0;\n}",
+      "language": "c",
+      "topic": "io",
+      "difficulty": 1,
+      "points": 10,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 12,
+      "inputs": {
+        "kmh": "float(0..250)"
+      },
+      "kind": "program",
+      "stdin": "{kmh}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "90.6\n",
+          "stdout": "Enter speed in km/h: 90.60 km/h = 25.17 m/s = 56.30 mph\n"
+        },
+        {
+          "stdin": "152.93\n",
+          "stdout": "Enter speed in km/h: 152.93 km/h = 42.48 m/s = 95.03 mph\n"
+        }
+      ]
+    },
+    {
+      "title": "Q3 \u00b7 Electricity Bill",
+      "prompt": "**[15] Q3** A utility company computes a monthly bill as follows:\n\n* every customer pays a basic charge of **$6.50**\n* the first **600 kWh** used cost **$0.10 per kWh**\n* every kWh **above 600** costs **$0.15 per kWh**\n\nWrite a complete program that prompts the user with `Enter energy used (kWh): ` and reads the energy used (an `int`).\n\n* If the value is negative, print `Error: energy cannot be negative.` and do nothing else.\n* Otherwise print `Total bill: $` followed by the bill to **2 decimal places**.\n\nUse symbolic constants for all rates and limits, and avoid redundant Boolean expressions.\n\nSample runs:\n\n```\nEnter energy used (kWh): 450\nTotal bill: $51.50\n```\n\n```\nEnter energy used (kWh): 1234\nTotal bill: $161.60\n```\n\n```\nEnter energy used (kWh): -5\nError: energy cannot be negative.\n```",
+      "reference": "#include <stdio.h>\n#define BASIC_CHARGE 6.50\n#define TIER1_LIMIT 600\n#define TIER1_RATE 0.10\n#define TIER2_RATE 0.15\nint main(void) {\n    int kwh;\n    double bill;\n    printf(\"Enter energy used (kWh): \");\n    scanf(\"%d\", &kwh);\n    if (kwh < 0) {\n        printf(\"Error: energy cannot be negative.\\n\");\n    } else {\n        if (kwh <= TIER1_LIMIT)\n            bill = BASIC_CHARGE + kwh * TIER1_RATE;\n        else\n            bill = BASIC_CHARGE + TIER1_LIMIT * TIER1_RATE + (kwh - TIER1_LIMIT) * TIER2_RATE;\n        printf(\"Total bill: $%.2lf\\n\", bill);\n    }\n    return 0;\n}",
+      "language": "c",
+      "topic": "conditionals",
+      "difficulty": 1,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 12,
+      "inputs": {
+        "kwh": "int(-200..1500)"
+      },
+      "kind": "program",
+      "stdin": "{kwh}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "139\n",
+          "stdout": "Enter energy used (kWh): Total bill: $20.40\n"
+        },
+        {
+          "stdin": "-178\n",
+          "stdout": "Enter energy used (kWh): Error: energy cannot be negative.\n"
+        }
+      ]
+    },
+    {
+      "title": "Q4 \u00b7 Sum of Odd Numbers",
+      "prompt": "**[10] Q4** Write a complete program that prompts the user with `Enter a positive integer: `, reads an integer `n` (you may assume it is positive), and uses a **loop** to compute the sum of all odd numbers from 1 to `n` inclusive.\n\nPrint the result exactly as shown:\n\n```\nEnter a positive integer: 9\nSum of odd numbers from 1 to 9: 25\n```",
+      "reference": "#include <stdio.h>\nint main(void) {\n    int n, i, sum = 0;\n    printf(\"Enter a positive integer: \");\n    scanf(\"%d\", &n);\n    i = 1;\n    while (i <= n) {\n        sum += i;\n        i += 2;\n    }\n    printf(\"Sum of odd numbers from 1 to %d: %d\\n\", n, sum);\n    return 0;\n}",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 1,
+      "points": 10,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 8,
+      "inputs": {
+        "n": "int(1..300)"
+      },
+      "kind": "program",
+      "stdin": "{n}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "starter": "#define _CRT_SECURE_NO_WARNINGS\n#include <stdio.h>\n#include <math.h>\n\nint main(void)\n{\n    /* TODO: your code here */\n\n    return 0;\n}\n",
+      "examples": [
+        {
+          "stdin": "208\n",
+          "stdout": "Enter a positive integer: Sum of odd numbers from 1 to 208: 10816\n"
+        },
+        {
+          "stdin": "63\n",
+          "stdout": "Enter a positive integer: Sum of odd numbers from 1 to 63: 1024\n"
+        }
+      ]
+    }
+  ]
+}
