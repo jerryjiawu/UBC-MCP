@@ -1,221 +1,410 @@
 {% extends "base.html" %}
-{% block title %}Q{{ qn }}. {{ q.spec.title }}{% endblock %}
-{% block navright %}{% include "_timer.html" %}{% endblock %}
-{% block banner %}
-{% if inst.remaining_s is not none %}<div class="progress timer-bar rounded-0"><div id="timer-bar" class="progress-bar"></div></div>{% endif %}
+{% from "_macros.html" import exam_status, available_points, instance_points, time_limit_data, modal %}
+{# pages/studentInstanceQuestion + components/QuestionContainer, SubmissionPanel, QuestionScore,
+   QuestionNavigation, and the pl-file-editor / pl-file-preview / pl-external-grader-results elements #}
+{% block title %}Question {{ qn }} — {{ exam_label }}.{{ qn }} — {{ COURSE_LABEL }}{% endblock %}
+{% block head %}
+<link href="{{ url_for('static', filename='pl/pl-file-editor.css') }}" rel="stylesheet" />
+<link href="{{ url_for('static', filename='pl/pl-file-preview.css') }}" rel="stylesheet" />
+<link href="{{ url_for('static', filename='pl/pl-external-grader-results.css') }}" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/ace-builds@1.44.0/src-min-noconflict/ace.js"></script>
+<script>ace.config.set('basePath', 'https://cdn.jsdelivr.net/npm/ace-builds@1.44.0/src-min-noconflict/');</script>
+<script src="{{ url_for('static', filename='pl/pl-file-editor.js') }}"></script>
+{{ time_limit_data(inst) }}
 {% endblock %}
-{% block content %}
 
-<div class="d-flex align-items-center mb-2 gap-2">
-  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('instance', iid=inst.id) }}">&larr; {{ inst.set.title }}</a>
-  <div class="ms-auto btn-group btn-group-sm">
-    <a class="btn btn-outline-secondary {% if qn == 1 %}disabled{% endif %}" href="{{ url_for('question', iid=inst.id, qn=qn-1) }}">Previous question</a>
-    <a class="btn btn-outline-secondary {% if qn == inst.questions|length %}disabled{% endif %}" href="{{ url_for('question', iid=inst.id, qn=qn+1) }}">Next question</a>
-  </div>
-</div>
+{% block content %}
+{% set file_name = "solution.c" if is_c else "solution.py" %}
+{% set additional = [0, q.available - q.awarded]|max %}
+{% set show_saved = q.saved_pending and not q.locked %}
+{% set total_subs = q.attempts|length + (1 if show_saved else 0) %}
 <div class="row">
-<div class="col-lg-9">
-<form method="post" action="{{ url_for('submit', iid=inst.id, qn=qn) }}" id="qform">
-<div class="card">
-  <div class="card-header bg-primary text-white"><h1>Q{{ qn }}. {{ q.spec.title }}</h1></div>
-  <div class="card-body question-body">
-    {{ q.spec.prompt|md }}
-    {% if q.spec.constraints %}
-      <div class="alert alert-warning py-2 small">
-        <strong>Constraints (checked by the autograder):</strong>
-        {% if q.spec.constraints.require_recursion %}must be recursive.{% endif %}
-        {% if q.spec.constraints.forbid_loops %}no loops{% if not is_c %} or comprehensions{% endif %}.{% endif %}
-        {% if q.spec.constraints.forbid_builtins %}not allowed: {% for b in q.spec.constraints.forbid_builtins %}<code>{{ b }}</code> {% endfor %}{% endif %}
-        {% if q.spec.constraints.require_calls %}must use: {% for b in q.spec.constraints.require_calls %}<code>{{ b }}</code> {% endfor %}{% endif %}
-        Violations score 0.
-      </div>
-    {% endif %}
-    {% if q.spec.examples %}
-      {% if q.spec.kind == "program" %}
-        {% for e in q.spec.examples %}
-          <div class="row g-2 mb-2">
-            <div class="col-md-6"><p class="mb-1 small"><strong>Sample input {{ loop.index }}</strong></p>
-              <pre class="mb-0"><code>{{ e.stdin }}</code></pre></div>
-            <div class="col-md-6"><p class="mb-1 small"><strong>Expected output {{ loop.index }}</strong></p>
-              <pre class="mb-0"><code>{{ e.stdout }}</code></pre></div>
+  <div class="col-lg-9 col-sm-12">
+    <div class="question-container mb-4" data-grading-method="External">
+      <form class="question-form" name="question-form" method="POST" autocomplete="off"
+            action="{{ url_for('question', iid=inst.id, qn=qn) }}">
+        <div class="card mb-3 question-block">
+          <div class="card-header bg-primary text-white d-flex align-items-center gap-2">
+            <h1>Question {{ qn }}: {{ q.spec.title }}</h1>
           </div>
-        {% endfor %}
-      {% else %}
-      <p class="mb-1"><strong>Examples</strong></p>
-      <pre class="mb-3"><code>{% for e in q.spec.examples %}{% if is_c %}{{ e.call }}
-  &rarr; {{ e.result }}{% else %}&gt;&gt;&gt; {{ e.call }}
+          <div class="card-body overflow-x-auto question-body">
+            {{ q.spec.prompt|md }}
+            {% if q.spec.constraints %}
+              <div class="alert alert-warning">
+                <strong>Restrictions (checked by the autograder; violations score 0%):</strong>
+                <ul class="mb-0">
+                  {% if q.spec.constraints.require_recursion %}<li>your function must be recursive</li>{% endif %}
+                  {% if q.spec.constraints.forbid_loops %}<li>no loops{% if not is_c %} or comprehensions{% endif %}</li>{% endif %}
+                  {% for b in q.spec.constraints.forbid_builtins or [] %}<li><code>{{ b }}</code> is not allowed</li>{% endfor %}
+                  {% for b in q.spec.constraints.require_calls or [] %}<li>you must use <code>{{ b }}</code></li>{% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+            {% if q.spec.examples %}
+              {% if q.spec.kind == "program" %}
+                {% for e in q.spec.examples %}
+                  <p class="mb-1"><strong>Sample input {{ loop.index }}:</strong></p>
+                  <pre class="bg-light border rounded p-2"><code>{{ e.stdin }}</code></pre>
+                  <p class="mb-1"><strong>Sample output {{ loop.index }}:</strong></p>
+                  <pre class="bg-light border rounded p-2"><code>{{ e.stdout }}</code></pre>
+                {% endfor %}
+              {% else %}
+                <p class="mb-1"><strong>Examples:</strong></p>
+                <pre class="bg-light border rounded p-2"><code>{% for e in q.spec.examples %}{% if is_c %}{{ e.call }}  →  {{ e.result }}{% else %}&gt;&gt;&gt; {{ e.call }}
 {{ e.result }}{% endif %}
 {% endfor %}</code></pre>
-      {% endif %}
-    {% endif %}
-
-    <div class="card file-editor mb-0">
-      <div class="card-header d-flex align-items-center py-1">
-        <span class="me-auto">solution.{{ "c" if is_c else "py" }}</span>
-        {% if not closed %}<button type="button" class="btn btn-sm btn-light" id="restore">Restore original file</button>{% endif %}
-      </div>
-      <div id="editor">{{ q.code }}</div>
-      <textarea name="code" id="code" class="d-none">{{ q.code }}</textarea>
-      <textarea id="starter" class="d-none">{{ q.spec.starter }}</textarea>
-    </div>
-  </div>
-  <div class="card-footer d-flex flex-wrap align-items-center gap-2">
-    {% if closed %}
-      <span class="text-muted">{% if inst.finished %}Assessment closed.{% elif q.complete %}Question complete &mdash; full marks.{% else %}No attempts remaining.{% endif %}</span>
-    {% else %}
-      <button class="btn btn-primary" name="action" value="grade">Save &amp; Grade</button>
-      <button class="btn btn-info" name="action" value="save">Save only</button>
-      <span class="small text-muted ms-1">
-        {% if q.attempts_left is not none %}{{ q.attempts_left }} attempt{{ "s" if q.attempts_left != 1 }} left{% else %}unlimited attempts{% endif %}
-        &middot; worth up to <strong>{{ q.available|pts }}</strong> points on your next attempt
-      </span>
-    {% endif %}
-  </div>
-</div>
-</form>
-
-{% if inst.finished %}
-<div class="card">
-  <div class="card-header">Reference solution</div>
-  <pre class="mb-0 p-3"><code>{{ q.spec.reference }}</code></pre>
-</div>
-{% endif %}
-
-<div id="submissions">
-{% for a in q.attempts|reverse %}
-  {% set r = a.report %}{% set p = (a.frac*100)|round|int %}
-  <div class="card">
-    <div class="card-header bg-light d-flex align-items-center flex-wrap gap-2">
-      <span class="me-auto">Submitted answer {{ a.n }}
-        <span class="text-muted small">&middot; {{ a.created|ago }}</span></span>
-      <span class="badge text-bg-{{ 'success' if p == 100 else ('warning' if p > 0 else 'danger') }}">{{ p }}%</span>
-      <span class="small">Awarded <strong>{{ a.awarded|pts }}</strong>
-        {% if a.penalty_before %}<span class="text-muted">({{ a.raw_points|pts }} &minus; {{ a.penalty_before|pts }} penalty)</span>{% endif %}</span>
-      <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#sub{{ a.n }}">details</button>
-    </div>
-    <div class="collapse {% if loop.first %}show{% endif %}" id="sub{{ a.n }}">
-    <div class="card-body">
-      {% if r.load_error %}
-        <div class="alert alert-danger mb-2">
-          <strong>{{ CATEGORY_LABELS.get(r.categories|first, "Error") }}:</strong>
-          <span class="mono">{{ r.load_error.type }}: {{ r.load_error.msg }}{% if r.load_error.line %} (line {{ r.load_error.line }}){% endif %}</span>
-          <div class="small mt-1">No tests could run.</div>
-        </div>
-      {% else %}
-        <p class="mb-2"><strong>{{ r.passed }}/{{ r.total }}</strong> tests passed.</p>
-      {% endif %}
-      {% if r.compiler_output %}
-        <details class="mb-2" {% if r.load_error %}open{% endif %}>
-          <summary class="small">Compiler output</summary>
-          <pre class="mono bg-light p-2 mb-0 small">{{ r.compiler_output }}</pre>
-        </details>
-      {% endif %}
-      {% for c in r.constraint_errors %}<div class="alert alert-warning py-1 mb-2 small">Constraint violated: {{ c|md|striptags }} &rarr; score set to 0.</div>{% endfor %}
-
-      {% if r.categories %}
-      <div class="mb-2">
-        {% for cat, n in r.categories.items() %}
-          <span class="badge rounded-pill text-bg-light border me-1">{{ CATEGORY_LABELS.get(cat, cat) }}{% if n > 1 %} &times;{{ n }}{% endif %}
-            {% if a.deduction and r.costs %}<span class="text-danger">&minus;{{ r.costs[cat]|pts }}</span>{% endif %}</span>
-        {% endfor %}
-        {% if a.deduction %}<div class="small text-danger mt-1">This attempt deducts {{ a.deduction|pts }} point{{ "s" if a.deduction != 1 }} from the question's value for later attempts.</div>{% endif %}
-      </div>
-      {% endif %}
-
-      {% if r.tests %}
-      <table class="table table-sm mb-0">
-        <thead><tr><th style="width:5rem">Test</th><th style="width:5rem">Result</th><th>Details</th></tr></thead>
-        <tbody>
-        {% for t in r.tests %}
-          <tr class="test-row {{ 'pass' if t.ok else 'fail' }}">
-            <td>Test {{ t.n }}{% if t.edge %} <span class="badge text-bg-light border">edge</span>{% endif %}</td>
-            <td>{% if t.ok %}<span class="text-success">passed</span>{% else %}<span class="text-danger">failed</span>{% endif %}</td>
-            <td>
-              {% if not t.ok %}
-                {% if t.hidden %}<span class="text-muted small">hidden test &middot; {{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
-                {% elif t.stdin is defined %}
-                  <div class="row g-2">
-                    <div class="col-md-4"><div class="small text-muted">input</div><pre class="mono bg-light p-1 mb-0">{{ t.stdin }}</pre></div>
-                    <div class="col-md-4"><div class="small text-muted">expected output</div><pre class="mono bg-light p-1 mb-0">{{ t.expected }}</pre></div>
-                    <div class="col-md-4"><div class="small text-muted">your output</div><pre class="mono bg-light p-1 mb-0">{{ t.got or "(nothing)" }}</pre></div>
-                  </div>
-                  <span class="small text-muted">{{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
-                {% else %}
-                  <div class="mono"><span class="text-muted">call:</span> {{ t.call }}
-<span class="text-muted">expected:</span> {{ t.expected }}
-<span class="text-muted">got:</span> {{ t.got }}{% if t.stdout %}
-<span class="text-muted">printed:</span> {{ t.stdout }}{% endif %}</div>
-                  <span class="small text-muted">{{ CATEGORY_LABELS.get(t.category, t.category) }}</span>
-                {% endif %}
               {% endif %}
-            </td>
-          </tr>
+            {% endif %}
+
+            {# pl-file-editor.mustache #}
+            <div id="file-editor-q{{ qn }}" class="mathjax_ignore">
+              <input type="hidden" name="_file_editor">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  {{ file_name }}
+                  <button type="button" class="btn btn-sm btn-secondary settings-button" title="Editor settings" aria-label="Editor settings">
+                    <i class="fas fa-cog"></i>
+                  </button>
+                </div>
+                <div class="editor"></div>
+                <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" aria-labelledby="modal-q{{ qn }}">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="modal-q{{ qn }}">Editor Settings</h5>
+                        <button type="button" class="btn-close close-settings-button" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <div class="mb-3">
+                          <label class="form-label" for="modal-q{{ qn }}-themes">Editor Theme</label>
+                          <select class="form-select" id="modal-q{{ qn }}-themes"></select>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label" for="modal-q{{ qn }}-fontsize">Font Size</label>
+                          <select class="form-select" id="modal-q{{ qn }}-fontsize"></select>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label" for="modal-q{{ qn }}-keyboardHandler">Key Bindings</label>
+                          <select class="form-select" id="modal-q{{ qn }}-keyboardHandler"></select>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary close-settings-button" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary save-settings-button">Save changes</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% if not closed %}
+                <div class="card-footer d-flex">
+                  <div class="ms-auto">
+                    <button type="button" class="btn btn-outline-secondary btn-sm restore-original">Restore original file</button>
+                    <div class="restore-original-confirm-container" style="display: none;">
+                      <button type="button" class="btn btn-success btn-sm restore-original-confirm">Confirm restore original</button>
+                      <button type="button" class="btn btn-secondary btn-sm restore-original-cancel">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          {% if not inst.finished %}
+          <div class="card-footer" id="question-panel-footer">
+            <div id="question-panel-footer-content">
+              {% if q.locked %}
+                This question is complete and cannot be answered again.
+              {% else %}
+              <div class="row">
+                <div class="col d-flex justify-content-between flex-wrap gap-2">
+                  <span class="d-flex align-items-center">
+                    <button type="submit" class="btn btn-info question-save disable-on-submit order-2" name="__action" value="save">
+                      Save only
+                    </button>
+                    <button type="submit" class="btn btn-primary question-grade disable-on-submit order-1 me-1" name="__action" value="grade">
+                      Save &amp; Grade
+                      {% if q.max_attempts %}
+                        {% if q.attempts_left > 1 %}<small class="fst-italic ms-2">{{ q.attempts_left }} attempts left</small>
+                        {% elif q.max_attempts > 1 %}<small class="fst-italic ms-2">Last attempt</small>
+                        {% else %}<small class="fst-italic ms-2">Single attempt</small>{% endif %}
+                      {% endif %}
+                    </button>
+                  </span>
+                  <div class="d-flex">
+                    <div class="d-flex flex-column">
+                      <small class="fst-italic text-end">
+                        {{ additional|pts }} {{ "additional " if q.awarded else "" }}point{{ "s" if additional != 1 }} available for this attempt
+                        {% if q.attempts %}<br />(each incorrect attempt lowers this by its error penalties){% endif %}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </form>
+
+      <div class="card mb-3 grading-block{% if not inst.finished %} d-none{% endif %}">
+        <div class="card-header bg-secondary text-white">
+          <h2>Correct answer</h2>
+        </div>
+        <div class="card-body overflow-x-auto answer-body">
+          {% if inst.finished %}<pre class="bg-dark text-white rounded p-3 mb-0"><code>{{ q.spec.reference }}</code></pre>{% endif %}
+        </div>
+      </div>
+
+      {% if show_saved %}
+      <div class="card mb-4" data-testid="submission-block">
+        <div class="card-header bg-light text-dark d-flex flex-wrap align-items-center collapsible-card-header">
+          <div class="me-2">
+            <div><span class="me-2 d-flex align-items-center">
+              <h2 class="h6 fw-normal mb-0">Submitted answer {% if total_subs > 1 %}{{ total_subs }}{% endif %}</h2>
+            </span></div>
+            <span class="small">Saved, not yet graded</span>
+          </div>
+          <div class="me-auto align-self-end" data-testid="submission-status">
+            <span class="badge text-bg-info">saved, not graded</span>
+          </div>
+          <div class="btn-group">
+            <button type="button" class="expand-icon-container btn btn-outline-dark btn-sm text-nowrap"
+                    data-bs-toggle="collapse" data-bs-target="#submission-saved-body" aria-expanded="true"
+                    aria-controls="submission-saved-body" aria-label="Toggle submission details">
+              <i class="fa fa-angle-up ms-1 expand-icon" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <div class="collapse js-submission-body js-collapsible-card-body show" id="submission-saved-body">
+          <div class="card-body overflow-x-auto submission-body">
+            {% with code=q.code, uid="saved" %}{% include "_file_preview.html" %}{% endwith %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% for a in q.attempts|reverse %}
+      {% set expanded = loop.first and not show_saved %}
+      {% set p = (a.frac * 100)|round(0, 'floor')|int %}
+      {% set res = external_results(a, q.spec) %}
+      {% if loop.index == 4 %}
+      <div class="mb-3 d-flex justify-content-center">
+        <button class="btn btn-outline-secondary btn-sm show-hide-btn collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#more-submissions-collapser" aria-expanded="false" aria-controls="more-submissions-collapser">
+          Show/hide older submissions
+          <i class="fa fa-angle-up ms-1 expand-icon"></i>
+        </button>
+      </div>
+      <div id="more-submissions-collapser" class="collapse">
+      {% endif %}
+      <div class="card mb-4" data-testid="submission-block">
+        <div class="card-header bg-light text-dark d-flex flex-wrap align-items-center collapsible-card-header">
+          <div class="me-2">
+            <div><span class="me-2 d-flex align-items-center">
+              <h2 class="h6 fw-normal mb-0">Submitted answer {% if total_subs > 1 %}{{ a.n }}{% endif %}</h2>
+            </span></div>
+            <span class="small">Submitted at {{ a.created|fulldate }} </span>
+          </div>
+          <div class="me-auto align-self-end" data-testid="submission-status">
+            {% if p == 100 %}<span class="badge text-bg-success">100%</span>
+            {% elif p > 0 %}<span class="badge text-bg-warning">{{ p }}%</span>
+            {% else %}<span class="badge text-bg-danger">0%</span>{% endif %}
+          </div>
+          <div class="btn-group">
+            <button type="button" class="btn btn-outline-dark btn-sm ms-2" data-bs-toggle="modal"
+                    data-bs-target="#submissionInfoModal-{{ a.id }}" aria-label="Submission info">
+              <i class="fa fa-info-circle"></i>
+            </button>
+            <button type="button" class="expand-icon-container btn btn-outline-dark btn-sm text-nowrap {% if not expanded %}collapsed{% endif %}"
+                    data-bs-toggle="collapse" data-bs-target="#submission-{{ a.id }}-body"
+                    aria-expanded="{{ 'true' if expanded else 'false' }}" aria-controls="submission-{{ a.id }}-body"
+                    aria-label="Toggle submission details">
+              <i class="fa fa-angle-up ms-1 expand-icon" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="collapse js-submission-body js-collapsible-card-body {% if expanded %}show{% endif %}" id="submission-{{ a.id }}-body">
+          <div class="card-body overflow-x-auto submission-body">
+            {% with code=a.code, uid=a.id %}{% include "_file_preview.html" %}{% endwith %}
+
+            {# pl-external-grader-results.mustache #}
+            <div class="pl-external-grader-results">
+              <h3>
+                Score:
+                <span style="color: {{ res.color }}">
+                  <strong>{{ res.points }}/{{ res.max_points }} ({{ res.score }}%)</strong>
+                </span>
+              </h3>
+              {% if res.message %}
+              <div class="card my-3">
+                <div class="card-header">Message</div>
+                <pre class="bg-dark text-white p-3 mb-0"><code>{{ res.message }}</code></pre>
+              </div>
+              {% endif %}
+              {% if res.output %}
+              <div class="card my-3">
+                <div class="card-header">Output</div>
+                <pre class="bg-dark text-white p-3 mb-0"><code>{{ res.output }}</code></pre>
+              </div>
+              {% endif %}
+              {% if res.tests %}
+              <h3>Test Results</h3>
+              <div class="my-3">
+                {% for t in res.tests %}
+                <div class="card mb-1 mt-1">
+                  <button type="button" class="card-header d-flex collapsed border-top-0 border-start-0 border-end-0 text-start"
+                          data-bs-toggle="collapse" data-bs-target="#card-{{ a.id }}-{{ t.index }}" aria-expanded="false"
+                          aria-controls="card-{{ a.id }}-{{ t.index }}">
+                    <div class="card-title mb-0 me-auto d-flex align-items-center">
+                      <i class="fas {{ t.icon }} me-2" aria-hidden="true" style="color: {{ t.color }}"></i>
+                      <span class="me-2" style="color: {{ t.color }};"><strong>[{{ t.points }}/{{ t.max_points }}]</strong></span>
+                      <span>{{ t.name }}</span>
+                    </div>
+                    <div class="ms-2">
+                      <span class="fas fa-angle-down"></span>
+                    </div>
+                  </button>
+                  <div id="card-{{ a.id }}-{{ t.index }}" class="collapse">
+                    <ul class="list-group list-group-flush">
+                      <li class="list-group-item"><strong>Max points:</strong> {{ t.max_points }}</li>
+                      <li class="list-group-item"><strong>Earned points:</strong> {{ t.points }}</li>
+                      {% if t.message %}
+                      <li class="list-group-item">
+                        <div class="mb-2"><strong>Message</strong></div>
+                        <pre class="bg-dark text-white rounded p-3 mb-2">{{ t.message }}</pre>
+                      </li>
+                      {% endif %}
+                    </ul>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% call modal("submissionInfoModal-" ~ a.id, "Submission info") %}
+        <div class="modal-body">
+          <table class="table table-sm table-borderless two-column-description mb-0" aria-label="Submission info">
+            <tr><th>Submission time</th><td>{{ a.created|fulldate }}</td></tr>
+            <tr><th>Score</th><td>{{ p }}%</td></tr>
+            <tr><th>Points awarded</th><td>{{ a.awarded|pts }}</td></tr>
+            <tr><th>Penalty applied</th><td>{{ a.penalty_before|pts }}</td></tr>
+            <tr><th>Deduction for later attempts</th><td>{{ a.deduction|pts }}</td></tr>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+        {% endcall %}
+      </div>
+      {% if loop.index >= 4 and loop.last %}</div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-sm-12">
+    <div class="card mb-4">
+      <div class="card-header bg-secondary">
+        <h2><a class="text-white" href="{{ url_for('instance', iid=inst.id) }}">Exam {{ exam_number }}</a></h2>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-center">
+          <a class="btn btn-info" href="{{ url_for('instance', iid=inst.id) }}">Assessment overview</a>
+        </div>
+        {% if not inst.finished and inst.remaining_s is not none %}
+        <div class="mt-3">
+          <div id="countdownProgress"></div>
+          <p class="mb-0">Time remaining: <span id="countdownDisplay"></span></p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-4" id="question-score-panel">
+      <div class="card-header bg-secondary text-white">
+        <h2>Question {{ qn }}</h2>
+      </div>
+      <table class="table table-sm two-column-description-no-header" aria-label="Question score" id="question-score-panel-content">
+        <tbody>
+          <tr><td>Status:</td><td>{{ exam_status(q) }}</td></tr>
+          <tr><td>Available points:</td><td>{{ available_points(q, inst) }}</td></tr>
+          <tr><td>Total points:</td><td>{{ instance_points(q) }}</td></tr>
+          <tr><td colspan="2" class="text-end"><small>Auto-graded question</small></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-center mb-2">
+      {% if qn > 1 %}
+        <a id="question-nav-prev" class="btn btn-primary mb-3" href="{{ url_for('question', iid=inst.id, qn=qn - 1) }}">Previous question</a>
+      {% else %}
+        <button id="question-nav-prev" class="btn btn-primary mb-3 disabled" disabled>Previous question</button>
+      {% endif %}
+      {% if qn < inst.questions|length %}
+        <a id="question-nav-next" class="btn btn-primary mb-3" href="{{ url_for('question', iid=inst.id, qn=qn + 1) }}">Next question</a>
+      {% else %}
+        <button id="question-nav-next" class="btn btn-primary mb-3 disabled" disabled>Next question</button>
+      {% endif %}
+    </div>
+
+    {% if penalties %}
+    <div class="card mb-4">
+      <div class="card-header bg-secondary text-white">
+        <h2>Error penalties</h2>
+      </div>
+      <table class="table table-sm mb-0" aria-label="Error penalties">
+        <tbody>
+        {% for p in penalties %}
+          <tr><td>{{ p.label }} <span class="text-muted">({{ p.count }}&times;)</span></td><td class="text-end">&minus;{{ p.effective|pts }}</td></tr>
         {% endfor %}
         </tbody>
       </table>
-      {% endif %}
-    </div>
-    </div>
-  </div>
-{% endfor %}
-</div>
-</div>
-
-<div class="col-lg-3">
-  <div class="card">
-    <div class="card-header bg-secondary text-white">Question</div>
-    <table class="table table-sm sidebar-table mb-0">
-      <tr><td>Submission status</td><td class="text-end"><span class="badge text-bg-{{ {"complete":"success","graded":"warning","saved":"info","unanswered":"secondary"}[q.status] }}">{{ q.status }}</span></td></tr>
-      <tr><td>Value</td><td class="text-end">{{ q.spec.points|pts }}</td></tr>
-      <tr><td>Penalties so far</td><td class="text-end {% if q.penalty %}text-danger{% endif %}">&minus;{{ q.penalty|pts }}</td></tr>
-      <tr><td>Value now</td><td class="text-end"><strong>{{ q.available|pts }}</strong></td></tr>
-      <tr><td>Awarded points</td><td class="text-end"><strong>{{ q.awarded|pts }}</strong>/{{ q.spec.points|pts }}</td></tr>
-      <tr><td>Attempts</td><td class="text-end">{{ q.used }}{% if q.max_attempts %}/{{ q.max_attempts }}{% endif %}</td></tr>
-    </table>
-    {% if q.attempts %}
-    <div class="card-body py-2">
-      {% for a in q.attempts %}{% set p = (a.frac*100)|round|int %}<span class="badge attempt-badge me-1 mb-1 text-bg-{{ 'success' if p == 100 else ('warning' if p > 0 else 'danger') }}" title="attempt {{ a.n }}: {{ a.awarded|pts }} pts">{{ p }}%</span>{% endfor %}
     </div>
     {% endif %}
   </div>
-
-  {% if penalties %}
-  <div class="card">
-    <div class="card-header">Your most common errors</div>
-    <table class="table table-sm sidebar-table mb-0">
-      {% for p in penalties %}
-      <tr><td>{{ p.label }}<div class="text-muted small">seen {{ p.count }}&times;</div></td><td class="text-end text-danger">&minus;{{ p.effective|pts }}</td></tr>
-      {% endfor %}
-    </table>
-  </div>
-  {% endif %}
-
-  {% include "_overview.html" %}
-</div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.min.js"></script>
 <script>
-  ace.config.set("basePath", "https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/");
-  const editor = ace.edit("editor");
-  editor.setTheme("ace/theme/chrome");
-  editor.session.setMode({{ ('"ace/mode/c_cpp"' if is_c else '"ace/mode/python"')|safe }});
-  editor.session.setTabSize(4);
-  editor.session.setUseSoftTabs(true);
-  editor.setOptions({ showPrintMargin: false, fontSize: "14px" });
-  editor.setReadOnly({{ "true" if closed else "false" }});
-  const code = document.getElementById("code");
-  document.getElementById("qform").addEventListener("submit", () => { code.value = editor.getValue(); });
-  const restore = document.getElementById("restore");
-  if (restore) restore.addEventListener("click", () => {
-    if (confirm("Replace your code with the original starter file?"))
-      editor.setValue(document.getElementById("starter").value, -1);
+  $(function () {
+    new window.PLFileEditor("q{{ qn }}", {
+      originalContents: "{{ q.spec.starter|b64 }}",
+      currentContents: "{{ q.code|b64 }}",
+      readOnly: {{ "true" if closed else "false" }},
+      aceMode: "{{ 'ace/mode/c_cpp' if is_c else 'ace/mode/python' }}",
+      aceModePath: undefined,
+      aceTheme: undefined,
+      fontSize: undefined,
+      minLines: 15,
+      maxLines: undefined,
+      autoResize: true,
+      preview: undefined,
+      plOptionFocus: false
+    });
+    // question.ts: disable submit buttons once the form is submitted
+    $('form.question-form').on('submit', function () {
+      setTimeout(() => $(this).find('.disable-on-submit').prop('disabled', true), 0);
+    });
   });
-  // Ctrl/Cmd+Enter = Save & Grade
-  editor.commands.addCommand({ name: "grade", bindKey: { win: "Ctrl-Enter", mac: "Cmd-Enter" },
-    exec: () => document.querySelector("button[value=grade]")?.click() });
+  // pl-file-preview: download + show/hide preview
+  document.querySelectorAll('.file-preview-download').forEach((btn) => btn.addEventListener('click', () => {
+    const item = btn.closest('.js-file-preview-item');
+    const text = item.querySelector('pre code').textContent;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    a.download = item.dataset.file;
+    a.click();
+  }));
+  document.querySelectorAll('.file-preview').forEach((el) => {
+    const label = document.querySelector('[data-bs-target="#' + el.id + '"] .js-toggle-show-preview-text');
+    el.addEventListener('show.bs.collapse', () => { if (label) label.textContent = 'Hide preview'; });
+    el.addEventListener('hide.bs.collapse', () => { if (label) label.textContent = 'Show preview'; });
+  });
 </script>
-{% include "_timer_script.html" %}
 {% endblock %}

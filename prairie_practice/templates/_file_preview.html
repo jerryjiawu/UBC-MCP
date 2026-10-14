@@ -1,0 +1,33 @@
+{# pl-file-preview.mustache (contents pre-rendered instead of fetched) #}
+<div id="file-preview-{{ uid }}">
+  <div class="card mb-2">
+    <div class="card-header">Files</div>
+    <div class="list-group list-group-flush">
+      <div class="list-group-item js-file-preview-item" data-file="{{ file_name }}">
+        <div class="d-flex flex-row collapsed file-status-container">
+          <div class="flex-grow-1 me-2">
+            <i class="fas fa-check-circle" style="color: #008c31" aria-hidden="true"></i>
+            {{ file_name }}
+            <p class="file-status">uploaded</p>
+          </div>
+          <div class="align-self-center gap-2 d-flex flex-wrap">
+            <button type="button" class="btn btn-outline-secondary btn-sm file-preview-download">
+              Download
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm collapsed" data-bs-toggle="collapse"
+                    data-bs-target="#file-preview-contents-{{ uid }}-0" aria-expanded="false"
+                    aria-controls="file-preview-contents-{{ uid }}-0">
+              <span class="me-2 js-toggle-show-preview-text">Show preview</span>
+              <i class="file-preview-icon fas fa-angle-down"></i>
+            </button>
+          </div>
+        </div>
+        <div class="file-preview collapse" id="file-preview-contents-{{ uid }}-0">
+          <div class="file-preview-container mt-2">
+            <pre class="bg-dark text-white rounded p-3 mb-0"><code>{{ code }}</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

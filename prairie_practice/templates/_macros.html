@@ -1,0 +1,56 @@
+{# Ports of small PrairieLearn components. #}
+
+{% macro scorebar(score) -%}
+{# components/Scorebar.tsx #}
+<div class="progress border border-success mx-auto" style="min-width: 5em; max-width: 20em" data-testid="scorebar">
+  <div class="progress-bar bg-success" style="width: {{ [100, score|int]|min }}%">{% if score >= 50 %}{{ score|int }}%{% endif %}</div>
+  <div class="d-flex flex-column justify-content-center text-center" style="width: {{ 100 - [100, score|int]|min }}%">{% if score < 50 %}{{ score|int }}%{% endif %}</div>
+</div>
+{%- endmacro %}
+
+{% macro exam_status(q) -%}
+{# components/ExamQuestionStatus.tsx #}
+{% set color = {"unanswered": "warning", "invalid": "danger", "grading": "secondary", "saved": "info",
+                "complete": "success", "correct": "success", "incorrect": "danger"}[q.status] %}
+<span class="badge text-bg-{{ color }}">{{ q.status }}</span>
+{%- endmacro %}
+
+{% macro available_points(q, inst) -%}
+{# components/ExamQuestionAvailablePoints.tsx (penalties replace PrairieLearn's points list) #}
+{% if inst.finished or q.locked %}&mdash;{% else %}{{ q.available|pts }}
+<button type="button" class="btn btn-xs btn-ghost js-available-points-popover" data-bs-toggle="popover"
+        data-bs-container="body" data-bs-html="true" data-bs-title="Explanation of available points"
+        data-bs-placement="auto"
+        data-bs-content="{% filter e %}<p>{% if q.attempts_left is not none %}You have {{ q.attempts_left }} remaining attempt{{ 's' if q.attempts_left != 1 }} for this question.{% else %}You have unlimited attempts for this question.{% endif %}</p><p>If you score 100% on your next submission, then you will be awarded {{ q.available|pts }} points.</p><p class=&quot;mb-0&quot;>Each incorrect attempt lowers this value by the penalty for the kinds of errors it contained (see the Gradebook). Attempting questions again will never reduce the points you already have.</p>{% endfilter %}">
+  <i class="fa fa-question-circle" aria-hidden="true"></i>
+</button>{% endif %}
+{%- endmacro %}
+
+{% macro instance_points(q) -%}
+{# components/QuestionScore.tsx InstanceQuestionPoints #}
+<span class="text-nowrap">
+  {% if q.status == "unanswered" and not q.attempts %}&mdash;{% elif q.status == "saved" and not q.attempts %}<span class="badge text-bg-info">pending</span>{% else %}<span data-testid="awarded-points">{{ q.awarded|pts }}</span>{% endif %}
+  <small>/<span class="text-muted">{{ q.spec.points|pts }}</span></small>
+</span>
+{%- endmacro %}
+
+{% macro time_limit_data(inst) -%}
+{% if not inst.finished and inst.remaining_s is not none %}
+<script type="application/json" id="time-limit-data">{{ {"serverRemainingMS": inst.remaining_s * 1000, "serverTimeLimitMS": inst.time_limit_min * 60000, "serverUpdateURL": url_for('time_remaining', iid=inst.id), "finishURL": url_for('instance', iid=inst.id)}|tojson }}</script>
+<script src="{{ url_for('static', filename='pl/examTimeLimitCountdown.js') }}"></script>
+{% endif %}
+{%- endmacro %}
+
+{% macro modal(id, title) -%}
+{# components/Modal.tsx #}
+<div class="modal fade" tabindex="-1" role="dialog" id="{{ id }}" aria-labelledby="{{ id }}-title">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h4" id="{{ id }}-title">{{ title }}</h2>
+      </div>
+      {{ caller() }}
+    </div>
+  </div>
+</div>
+{%- endmacro %}

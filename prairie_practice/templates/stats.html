@@ -1,92 +1,138 @@
 {% extends "base.html" %}
-{% block title %}Error tracker{% endblock %}
+{% from "_macros.html" import scorebar %}
+{# pages/studentGradebook + the attempt/error tracker #}
+{% block title %}Gradebook — {{ COURSE_LABEL }}{% endblock %}
 {% block content %}
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white d-flex align-items-center">
+    <h1>Gradebook</h1>
+  </div>
+  {% if not sets|selectattr("latest_instance")|list %}
+    <div class="card-body"><div class="text-muted">No gradebook entries found.</div></div>
+  {% else %}
+  <div class="table-responsive">
+    <table class="table table-sm table-hover" aria-label="Gradebook">
+      <thead>
+        <tr>
+          <th style="width: 1%"><span class="visually-hidden">Label</span></th>
+          <th><span class="visually-hidden">Title</span></th>
+          <th class="text-center">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th colspan="3" scope="rowgroup">Exams</th></tr>
+        {% for s in sets|reverse %}{% if s.latest_instance %}
+        <tr>
+          <td class="align-middle" style="width: 1%"><span class="badge color-red1">E{{ loop.index }}</span></td>
+          <td class="align-middle"><a href="{{ url_for('instance', iid=s.latest_instance) }}">{{ s.title }}</a></td>
+          <td class="text-center align-middle">{{ scorebar(s.latest_score) }}</td>
+        </tr>
+        {% endif %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
 <div class="row">
-<div class="col-xl-7">
-  <div class="card">
-    <div class="card-header bg-primary text-white"><h1>Error frequency</h1></div>
+<div class="col-lg-7">
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white"><h2>Errors by type</h2></div>
     <div class="card-body">
-      <p class="small text-muted mb-3">{{ s.attempts }} graded attempts, {{ s.perfect_attempts }} at 100%.
-        Each error category is counted once per attempt.</p>
+      <p class="text-muted mb-3">{{ s.attempts }} graded attempts, {{ s.perfect_attempts }} at 100%. Each error type is counted once per attempt.</p>
       {% if s.by_category %}
         {% set top = s.by_category.values()|max %}
-        <table class="table table-sm align-middle mb-0">
+        <table class="table table-sm mb-0" aria-label="Errors by type">
           {% for cat, n in s.by_category.items() %}
           <tr>
-            <td style="width:40%">{{ CATEGORY_LABELS.get(cat, cat) }}</td>
-            <td><div class="bar" style="width: {{ (100 * n / top)|round|int }}%"></div></td>
-            <td class="text-end" style="width:3rem">{{ n }}</td>
+            <td class="align-middle" style="width: 45%">{{ CATEGORY_LABELS.get(cat, cat) }}</td>
+            <td class="align-middle">
+              <div class="progress" style="height: 0.75rem"><div class="progress-bar bg-danger" style="width: {{ (100 * n / top)|round|int }}%"></div></div>
+            </td>
+            <td class="text-end align-middle" style="width: 3rem">{{ n }}</td>
           </tr>
           {% endfor %}
         </table>
-      {% else %}<p class="text-muted mb-0">No errors recorded yet.</p>{% endif %}
+      {% else %}<div class="text-muted">No errors recorded yet.</div>{% endif %}
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">By topic</div>
-    <table class="table table-sm mb-0">
-      <thead><tr><th>Topic</th><th class="text-end">Attempts</th><th class="text-end">100% attempts</th><th class="text-end">Errors</th><th class="text-end">Errors / attempt</th></tr></thead>
-      {% for t in s.by_topic %}
-      <tr><td>{{ t.topic }}</td><td class="text-end">{{ t.attempts }}</td><td class="text-end">{{ t.perfect }}</td><td class="text-end">{{ t.errors }}</td><td class="text-end">{{ t.error_rate }}</td></tr>
-      {% else %}<tr><td colspan="5" class="text-muted">Nothing yet.</td></tr>{% endfor %}
-    </table>
+  <div class="card mb-4">
+    <div class="card-header bg-secondary text-white"><h2>Errors by topic</h2></div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0" aria-label="Errors by topic">
+        <thead><tr><th>Topic</th><th class="text-center">Attempts</th><th class="text-center">100% attempts</th><th class="text-center">Errors</th><th class="text-center">Errors / attempt</th></tr></thead>
+        <tbody>
+        {% for t in s.by_topic %}
+        <tr><td>{{ t.topic }}</td><td class="text-center">{{ t.attempts }}</td><td class="text-center">{{ t.perfect }}</td><td class="text-center">{{ t.errors }}</td><td class="text-center">{{ t.error_rate }}</td></tr>
+        {% else %}<tr><td colspan="5" class="text-muted">Nothing yet.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">Recent attempts</div>
+  <div class="card mb-4">
+    <div class="card-header bg-secondary text-white"><h2>Recent submissions</h2></div>
     <div class="table-responsive">
-    <table class="table table-sm mb-0 small">
-      <thead><tr><th>When</th><th>Assessment</th><th>Question</th><th class="text-end">Score</th><th class="text-end">Awarded</th><th class="text-end">Deduction</th><th>Errors</th></tr></thead>
-      {% for r in s.recent %}
-      <tr>
-        <td class="text-nowrap">{{ r.created|ago }}</td>
-        <td>{{ r.set_title }}</td>
-        <td><a href="{{ url_for('question', iid=r.instance_id, qn=r.qidx + 1) }}">Q{{ r.qidx + 1 }}</a> #{{ r.n }}</td>
-        <td class="text-end">{{ (r.frac * 100)|round|int }}%</td>
-        <td class="text-end">{{ r.awarded|pts }}</td>
-        <td class="text-end {% if r.deduction %}text-danger{% endif %}">{{ r.deduction|pts }}</td>
-        <td>{% for c in r.categories %}<span class="badge text-bg-light border me-1">{{ CATEGORY_LABELS.get(c, c) }}</span>{% endfor %}</td>
-      </tr>
-      {% else %}<tr><td colspan="7" class="text-muted">No attempts yet.</td></tr>{% endfor %}
-    </table>
+      <table class="table table-sm table-hover mb-0" aria-label="Recent submissions">
+        <thead><tr><th>Submitted</th><th>Exam</th><th>Question</th><th class="text-center">Score</th><th class="text-center">Awarded</th><th class="text-center">Deduction</th><th>Errors</th></tr></thead>
+        <tbody>
+        {% for r in s.recent %}
+        {% set p = (r.frac * 100)|round(0, 'floor')|int %}
+        <tr>
+          <td class="text-nowrap">{{ r.created|ago }}</td>
+          <td>{{ r.set_title }}</td>
+          <td><a href="{{ url_for('question', iid=r.instance_id, qn=r.qidx + 1) }}">Question {{ r.qidx + 1 }}</a> <span class="text-muted">#{{ r.n }}</span></td>
+          <td class="text-center"><span class="badge text-bg-{{ 'success' if p == 100 else ('warning' if p > 0 else 'danger') }}">{{ p }}%</span></td>
+          <td class="text-center">{{ r.awarded|pts }}</td>
+          <td class="text-center">{% if r.deduction %}<span class="text-danger">&minus;{{ r.deduction|pts }}</span>{% else %}&mdash;{% endif %}</td>
+          <td>{% for c in r.categories %}<span class="badge color-gray1 me-1">{{ CATEGORY_LABELS.get(c, c) }}</span>{% endfor %}</td>
+        </tr>
+        {% else %}<tr><td colspan="7" class="text-muted">No submissions yet.</td></tr>{% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<div class="col-xl-5">
+<div class="col-lg-5">
 <form method="post" action="{{ url_for('update_penalties') }}">
-  <div class="card">
-    <div class="card-header bg-secondary text-white">Penalty points per error</div>
-    <div class="card-body small">
-      A wrong attempt deducts the sum of its error penalties (capped at <strong>{{ adaptive.max_per_attempt|pts }}</strong>)
-      from that question's value for all later attempts. Errors you make often cost more: every
-      <strong>{{ adaptive.every }}</strong> occurrences add <strong>{{ adaptive.step|pts }}</strong>, up to <strong>{{ adaptive.cap|pts }}</strong>.
+  <div class="card mb-4">
+    <div class="card-header bg-secondary text-white"><h2>Penalty points per error</h2></div>
+    <div class="card-body">
+      <p class="mb-0">A wrong attempt lowers that question's available points by the sum of its error
+      penalties (at most <strong>{{ adaptive.max_per_attempt|pts }}</strong> per attempt). Errors you make often cost more:
+      every <strong>{{ adaptive.every }}</strong> occurrences add <strong>{{ adaptive.step|pts }}</strong>, up to
+      <strong>{{ adaptive.cap|pts }}</strong>.</p>
     </div>
-    <table class="table table-sm align-middle mb-0">
-      <thead><tr><th>Error</th><th class="text-end">Seen</th><th style="width:6rem">Base</th><th class="text-end">Now costs</th></tr></thead>
-      {% for p in table %}
-      <tr>
-        <td>{{ p.label }}</td>
-        <td class="text-end">{{ p.count }}</td>
-        <td><input class="form-control form-control-sm" type="number" step="0.25" min="0" name="pen_{{ p.category }}" value="{{ p.base|pts }}"></td>
-        <td class="text-end {% if p.effective > p.base %}text-danger fw-semibold{% endif %}">{{ p.effective|pts }}</td>
-      </tr>
-      {% endfor %}
-    </table>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" aria-label="Penalty points">
+        <thead><tr><th>Error</th><th class="text-center">Seen</th><th style="width: 6rem">Base</th><th class="text-center">Now costs</th></tr></thead>
+        <tbody>
+        {% for p in table %}
+        <tr>
+          <td>{{ p.label }}</td>
+          <td class="text-center">{{ p.count }}</td>
+          <td><input class="form-control form-control-sm" type="number" step="0.25" min="0" name="pen_{{ p.category }}" value="{{ p.base|pts }}" aria-label="Base penalty for {{ p.label }}"></td>
+          <td class="text-center {% if p.effective > p.base %}text-danger fw-bold{% endif %}">{{ p.effective|pts }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
     <div class="card-body border-top">
       <div class="row g-2">
-        <div class="col-6 col-md-3"><label class="form-label small">Every N errors</label>
-          <input class="form-control form-control-sm" type="number" min="1" name="every" value="{{ adaptive.every }}"></div>
-        <div class="col-6 col-md-3"><label class="form-label small">add points</label>
-          <input class="form-control form-control-sm" type="number" step="0.25" min="0" name="step" value="{{ adaptive.step|pts }}"></div>
-        <div class="col-6 col-md-3"><label class="form-label small">up to (cap)</label>
-          <input class="form-control form-control-sm" type="number" step="0.25" min="0" name="cap" value="{{ adaptive.cap|pts }}"></div>
-        <div class="col-6 col-md-3"><label class="form-label small">Max / attempt</label>
-          <input class="form-control form-control-sm" type="number" step="0.25" min="0" name="max_per_attempt" value="{{ adaptive.max_per_attempt|pts }}"></div>
+        <div class="col-6"><label class="form-label" for="every">Every N errors</label>
+          <input class="form-control form-control-sm" id="every" type="number" min="1" name="every" value="{{ adaptive.every }}"></div>
+        <div class="col-6"><label class="form-label" for="step">add points</label>
+          <input class="form-control form-control-sm" id="step" type="number" step="0.25" min="0" name="step" value="{{ adaptive.step|pts }}"></div>
+        <div class="col-6"><label class="form-label" for="cap">up to (cap)</label>
+          <input class="form-control form-control-sm" id="cap" type="number" step="0.25" min="0" name="cap" value="{{ adaptive.cap|pts }}"></div>
+        <div class="col-6"><label class="form-label" for="max_per_attempt">Max per attempt</label>
+          <input class="form-control form-control-sm" id="max_per_attempt" type="number" step="0.25" min="0" name="max_per_attempt" value="{{ adaptive.max_per_attempt|pts }}"></div>
       </div>
     </div>
-    <div class="card-footer text-end"><button class="btn btn-primary btn-sm">Save penalties</button></div>
+    <div class="card-footer d-flex"><button class="btn btn-primary ms-auto">Save changes</button></div>
   </div>
 </form>
 </div>

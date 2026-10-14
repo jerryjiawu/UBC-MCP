@@ -169,8 +169,16 @@ def list_sets():
                         "points": sum(q["points"] for q in data["questions"]),
                         "topics": sorted({q["topic"] for q in data["questions"]}),
                         "settings": data["settings"],
+                        "latest_instance": inst["id"] if inst else None,
                         "open_instance": inst["id"] if inst and not inst["finished"] else None})
-        return out
+    for s in out:
+        if s["latest_instance"]:
+            inst = get_instance(s["latest_instance"])  # also closes it if its time ran out
+            s["latest_score"] = inst["score_perc"]
+            s["open_deadline"] = inst["deadline"] if not inst["finished"] else None
+            if inst["finished"]:
+                s["open_instance"] = None
+    return out
 
 
 def add_question(set_id, spec):
@@ -240,7 +248,22 @@ def get_instance(iid):
     inst["awarded"] = round(sum(q["awarded"] for q in inst["questions"]), 2)
     inst["remaining_s"] = (max(0, int(inst["started"] + inst["time_limit_min"] * 60 - time.time()))
                            if inst["time_limit_min"] and not inst["finished"] else None)
+    inst["deadline"] = inst["started"] + inst["time_limit_min"] * 60 if inst["time_limit_min"] else None
+    inst["time_expired"] = bool(inst["finished"] and inst["deadline"]
+                                and inst["finished"] >= inst["deadline"] - 1)
+    inst["score_perc"] = 100 * inst["awarded"] / inst["total_points"] if inst["total_points"] else 0
     return inst
+
+
+def grade_saved(iid):
+    """The exam overview's "Grade N saved answers" button."""
+    inst = get_instance(iid)
+    graded = 0
+    for q in inst["questions"]:
+        if q["saved_pending"] and not q["locked"]:
+            submit(iid, q["idx"], q["code"])
+            graded += 1
+    return graded
 
 
 def finish_instance(iid):
@@ -252,7 +275,7 @@ def question_state(iid, qidx, spec, max_attempts):
     with db() as conn:
         rows = [dict(r) for r in conn.execute(
             "SELECT * FROM attempts WHERE instance_id=? AND qidx=? ORDER BY n", (iid, qidx))]
-        draft = conn.execute("SELECT code FROM drafts WHERE instance_id=? AND qidx=?",
+        draft = conn.execute("SELECT code, saved FROM drafts WHERE instance_id=? AND qidx=?",
                              (iid, qidx)).fetchone()
     for r in rows:
         r["report"] = json.loads(r["report"])
@@ -260,20 +283,24 @@ def question_state(iid, qidx, spec, max_attempts):
     penalty = round(sum(r["deduction"] for r in rows), 2)
     complete = any(r["frac"] >= 1 for r in rows)
     used = len(rows)
-    if complete:
+    locked = complete or bool(max_attempts and used >= max_attempts)
+    # a "Save only" newer than the last graded attempt is waiting to be graded
+    saved_pending = bool(draft) and (not rows or (draft["saved"] > rows[-1]["created"]
+                                                  and draft["code"] != rows[-1]["code"]))
+    # PrairieLearn's exam statuses
+    if locked:
         status = "complete"
-    elif rows:
-        status = "graded"
-    elif draft:
+    elif saved_pending:
         status = "saved"
+    elif rows:
+        status = "correct" if rows[-1]["frac"] >= 1 else "incorrect"
     else:
         status = "unanswered"
     return {"idx": qidx, "spec": spec, "attempts": rows, "awarded": awarded,
             "penalty": penalty, "available": max(0.0, round(spec["points"] - penalty, 2)),
             "used": used, "max_attempts": max_attempts,
             "attempts_left": (max_attempts - used) if max_attempts else None,
-            "locked": complete or bool(max_attempts and used >= max_attempts),
-            "complete": complete, "status": status,
+            "locked": locked, "complete": complete, "status": status, "saved_pending": saved_pending,
             "code": draft["code"] if draft else (rows[-1]["code"] if rows else spec["starter"])}
 
 

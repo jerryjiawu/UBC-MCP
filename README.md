@@ -172,7 +172,7 @@ Setup:
 
 ### PrairiePractice (PrairieTest-style practice exams)
 
-A local web app that looks and works like a UBC PrairieTest coding exam: assessment overview, timer, an Ace code editor (`solution.c` / `solution.py`), **Save & Grade** / **Save only**, submission panels with per-test results, and a points sidebar. Only the front end is recreated; grading runs locally, and nothing from PrairieLearn itself is installed. Questions are in **C (APSC 160 style)** or Python.
+A local web app with the same front end you use during a UBC PrairieTest exam. PrairieTest itself is closed source, but during the exam you work in PrairieLearn's exam pages, and PrairieLearn is open source. The app uses PrairieLearn's own stylesheets (`colors.css`, `local.css`, `pageLayout.css`, the element CSS) and its `pl-file-editor` script, copied unmodified into `prairie_practice/static/pl/` (AGPL-3.0; the license is next to them). The templates reproduce the markup of PrairieLearn's student pages: Assessments, the exam overview (status badges, available/awarded points, *Grade N saved answers*, the *All done?* finish dialog), and the question page (file editor with settings and *Restore original file*, *Save & Grade* / *Save only*, submission panels with the file preview and autograder test results, the exam sidebar with its countdown). Grading runs locally; nothing from PrairieLearn's server is installed. Questions are in **C (APSC 160 style)** or Python.
 
 ```powershell
 python -m prairie_practice.app      # http://127.0.0.1:5070  (also started by MCP Mommy)
@@ -187,7 +187,7 @@ The 26 built-in C templates cover io, conditionals, loops, functions, arrays, po
 
 **Procedural tests, not token-by-token generation.** A problem is a small spec: a prompt, a reference solution, and a one-line type for each parameter (e.g. `"nums": "list[int(-50..50)](0..15)"`). Every time an exam starts, the tests are generated from a fresh random seed. They include boundary cases taken from the type ranges, and the reference solution computes the expected outputs, so the agent never writes test cases. The built-in templates (26 C, 25 Python) randomize their own parameters, so `generate_practice_set` doesn't need the agent to write any problem text.
 
-**Attempts and penalties.** Every graded attempt is classified into error categories: syntax/indentation error, missing or misnamed function, wrong parameters, NameError/TypeError/IndexError/KeyError/…, infinite recursion, infinite loop, missing `return`, printed instead of returned, wrong return type, off-by-one, failed edge cases, wrong answer, and broken constraints ("must be recursive", "no loops", "no `sorted`"; checked statically, scores 0). A wrong attempt deducts the summed penalties of its categories from the question's value for later attempts (default cap 3 points per attempt). Your best attempt counts, and the question locks at 100% or when you run out of attempts. Errors you repeat get more expensive: by default every 5 occurrences of a category add 0.5 points to its penalty, up to 3. The **Error tracker** page shows error frequencies, per-topic error rates and recent attempts, and lets you edit every penalty value.
+**Attempts and penalties.** Every graded attempt is classified into error categories: syntax/indentation error, missing or misnamed function, wrong parameters, NameError/TypeError/IndexError/KeyError/…, infinite recursion, infinite loop, missing `return`, printed instead of returned, wrong return type, off-by-one, failed edge cases, wrong answer, and broken constraints ("must be recursive", "no loops", "no `sorted`"; checked statically, scores 0). A wrong attempt deducts the summed penalties of its categories from the question's value for later attempts (default cap 3 points per attempt). Your best attempt counts, and the question locks at 100% or when you run out of attempts. Errors you repeat get more expensive: by default every 5 occurrences of a category add 0.5 points to its penalty, up to 3. The **Gradebook** page shows exam scores, error frequencies, per-topic error rates and recent submissions, and lets you edit every penalty value.
 
 **Sharing.** Each set is saved as `prairie_practice/sets/<title>-<id>.ubcprac.json`. Anyone running this app can import it from the Assessments page or with `import_practice_set`. Shared files contain reference solutions that run locally to generate tests, so only import files from people you trust.
 
@@ -214,7 +214,8 @@ mcp_manager.py      # "MCP Mommy": dashboard + tray icon to start/stop/monitor e
 discord_bot.py      # Discord bot: Duo notifications (via cwl.py) + RAG-backed UBC status Q&A
 prairie_practice_mcp.py # MCP server: generate/share practice exams, read the error tracker
 prairie_practice/   # PrairieTest-style practice exam app
-  app.py            # Flask web UI (PrairieLearn-style pages in templates/)
+  app.py            # Flask web UI (PrairieLearn page markup in templates/)
+  static/pl/        # PrairieLearn's own CSS + pl-file-editor.js, unmodified (AGPL-3.0)
   problems.py       # built-in problem templates + spec validation
   dsl.py            # input type language -> procedural test inputs
   grader.py         # runs Python code in a subprocess, classifies errors

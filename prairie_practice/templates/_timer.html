@@ -1,9 +1,0 @@
-{# PrairieTest-style countdown; reloads when time runs out so the server closes the exam. #}
-{% if inst.remaining_s is not none %}
-<span class="navbar-text text-white timer me-2" id="timer"
-      data-remaining="{{ inst.remaining_s }}" data-total="{{ inst.time_limit_min * 60 }}">
-  Time remaining: <strong id="timer-text">--</strong>
-</span>
-{% elif inst.finished %}
-<span class="badge text-bg-secondary">Assessment closed</span>
-{% endif %}
