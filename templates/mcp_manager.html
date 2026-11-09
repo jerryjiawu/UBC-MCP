@@ -95,6 +95,17 @@
     .brief .go { color: var(--copper); font-weight: 600; }
     .reference { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
     .reference pre { margin-top: 18px; color: var(--muted); }
+    .ssh-section { margin-top: 36px; }
+    .ssh-form { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 90px) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: end; }
+    .ssh-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; min-width: 0; }
+    .ssh-form input { width: 100%; background: #111110; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font: 13px var(--mono); }
+    .ssh-form input:focus { border-color: var(--copper); outline: none; }
+    .ssh-form-footer { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .ssh-form-footer span { color: var(--muted); font-size: 11px; }
+    .ssh-form button { border: 1px solid #e4a07b30; border-radius: 7px; background: #e4a07b15; color: var(--copper); padding: 8px 16px; font-size: 12px; }
+    .ssh-form button:hover:not(:disabled) { background: #e4a07b25; }
+    @media (max-width: 750px) { .ssh-form { grid-template-columns: minmax(0, 1fr) minmax(0, 90px); padding: 16px; } }
+    @media (max-width: 480px) { .ssh-form { grid-template-columns: minmax(0, 1fr); } }
     footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 26px; color: var(--muted); font-size: 10px; }
     @media (min-width: 1600px) { main { padding-top: 48px; } .server { padding: 24px; } }
     @media (max-width: 1150px) {
@@ -132,6 +143,7 @@
       <div class="nav-label">Workspace</div>
       <nav aria-label="Dashboard sections">
         <a href="#services"><span class="nav-icon" aria-hidden="true">[]</span>Services</a>
+        <a href="#ssh-settings"><span class="nav-icon" aria-hidden="true">&gt;_</span>SSH</a>
         <a href="#daily-brief"><span class="nav-icon" aria-hidden="true">::</span>Daily brief</a>
       </nav>
       <div class="local-note">
@@ -158,6 +170,17 @@
         <div class="section-heading"><div><h2 id="services-title">Services</h2><p>The engines behind your workspace.</p></div><span>Live status / every 2s</span></div>
         <p class="error" id="status-error" role="alert" hidden></p>
         <div class="server-grid" id="servers"><p style="color: var(--muted)">Connecting to your services...</p></div>
+      </section>
+      <section class="ssh-section" id="ssh-settings" aria-labelledby="ssh-title">
+        <div class="section-heading"><div><h2 id="ssh-title">SSH connection</h2><p>Where the SSH MCP connects. Saved to .env; ssh-mcp restarts on save.</p></div><span>Password never shown</span></div>
+        <p class="error" id="ssh-error" role="alert" hidden></p>
+        <form class="ssh-form" id="ssh-form" autocomplete="off">
+          <label>Host<input name="ssh_host" placeholder="server.example.com" spellcheck="false"></label>
+          <label>Port<input name="ssh_port" inputmode="numeric" placeholder="22"></label>
+          <label>Username<input name="ssh_username" spellcheck="false" autocomplete="off"></label>
+          <label>Password<input name="ssh_password" type="password" autocomplete="new-password"></label>
+          <div class="ssh-form-footer"><span id="ssh-status">Loading...</span><button type="submit">Save</button></div>
+        </form>
       </section>
       <section class="brief-section" id="daily-brief" aria-labelledby="brief-title">
         <div class="section-heading"><div><h2 id="brief-title">Daily brief</h2><p>Less noise. Your next move, at a glance.</p></div><span>Refreshes every 30s</span></div>
@@ -190,7 +213,8 @@
       'gmail-mcp': ['Gmail', 'Your inbox, connected to your tools', 'GM'],
       'rag-server': ['Knowledge engine', 'Local context & semantic search', 'RAG'],
       'discord-bot': ['Discord bot', 'Your assistant, where you chat', 'DC'],
-      'screenshot-uploader': ['Screenshot uploader', 'Capture, sync & keep context close', 'SS']
+      'screenshot-uploader': ['Screenshot uploader', 'Capture, sync & keep context close', 'SS'],
+      'ssh-mcp': ['SSH', 'Remote shell & files on your server', 'SSH']
     };
     const cards = new Map();
     let connected = false;
@@ -335,6 +359,42 @@
       }
     }
 
+    const sshForm = document.getElementById('ssh-form');
+    function fillSsh(config) {
+      sshForm.ssh_host.value = config.ssh_host;
+      sshForm.ssh_port.value = config.ssh_port;
+      sshForm.ssh_username.value = config.ssh_username;
+      sshForm.ssh_password.value = '';
+      sshForm.ssh_password.placeholder = config.has_password ? 'saved (leave blank to keep)' : 'not set';
+      document.getElementById('ssh-status').textContent = config.ssh_host && config.ssh_username
+        ? `Configured: ${config.ssh_username}@${config.ssh_host}:${config.ssh_port || 22}` : 'Not configured yet';
+    }
+    async function loadSsh() {
+      try { fillSsh(await request('/api/ssh/config')); showError('ssh-error', ''); }
+      catch (exception) { showError('ssh-error', `Cannot load SSH settings. ${exception.message}`); }
+    }
+    sshForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = sshForm.querySelector('button');
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/ssh/config', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.fromEntries(new FormData(sshForm))),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+        fillSsh(data);
+        document.getElementById('ssh-status').textContent += ' / saved';
+        showError('ssh-error', '');
+        refresh();
+      } catch (exception) {
+        showError('ssh-error', `Could not save SSH settings. ${exception.message}`);
+      } finally { button.disabled = false; }
+    });
+
+    loadSsh();
     refresh();
     refreshBrief();
     setInterval(refresh, 2000);

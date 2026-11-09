@@ -14,7 +14,8 @@ import time
 import webbrowser
 from collections import deque
 
-from flask import Flask, jsonify, render_template, send_file
+from dotenv import dotenv_values, set_key
+from flask import Flask, jsonify, render_template, request, send_file
 from PIL import Image, ImageDraw
 import pystray
 
@@ -33,6 +34,7 @@ SERVERS = {
         PROJECT_ROOT, "screenshot-app", "windows-uploader", "uploader.py"
     ),
     "prairie-practice-app": os.path.join(PROJECT_ROOT, "prairie_practice", "app.py"),
+    "ssh-mcp": os.path.join(PROJECT_ROOT, "ssh_mcp.py"),
 }
 
 LOG_LINES = 200
@@ -195,6 +197,53 @@ def api_brief():
             "text": "(no brief yet -- the scheduled task writes this every 4 hours)",
             "age": "",
         })
+
+
+ENV_PATH = os.path.join(PROJECT_ROOT, ".env")
+SSH_FIELDS = ("SSH_HOST", "SSH_PORT", "SSH_USERNAME")
+
+
+def _multiline(value):
+    return "\n" in value or "\r" in value
+
+
+@app.route("/api/ssh/config", methods=["GET"])
+def api_ssh_config_get():
+    # Never send the password back to the browser -- only whether one is set.
+    env = dotenv_values(ENV_PATH) if os.path.exists(ENV_PATH) else {}
+    data = {k.lower(): env.get(k) or "" for k in SSH_FIELDS}
+    data["has_password"] = bool(env.get("SSH_PASSWORD"))
+    return jsonify(data)
+
+
+@app.route("/api/ssh/config", methods=["POST"])
+def api_ssh_config_set():
+    body = request.get_json(silent=True) or {}
+    port = str(body.get("ssh_port") or "22").strip()
+    if not port.isdigit() or not 0 < int(port) < 65536:
+        return jsonify({"error": "port must be 1-65535"}), 400
+    values = {
+        "SSH_HOST": str(body.get("ssh_host") or "").strip(),
+        "SSH_PORT": port,
+        "SSH_USERNAME": str(body.get("ssh_username") or "").strip(),
+    }
+    if any(_multiline(v) for v in values.values()):
+        return jsonify({"error": "values must be a single line"}), 400
+    # Blank password field = keep the existing one.
+    password = str(body.get("ssh_password") or "")
+    if password:
+        if _multiline(password):
+            return jsonify({"error": "password must be a single line"}), 400
+        values["SSH_PASSWORD"] = password
+    if not os.path.exists(ENV_PATH):
+        open(ENV_PATH, "a").close()
+    for key, value in values.items():
+        set_key(ENV_PATH, key, value, quote_mode="always")
+    srv = managed["ssh-mcp"]
+    if srv.is_running():
+        srv.stop()
+        srv.start()
+    return api_ssh_config_get()
 
 
 @app.route("/api/status")

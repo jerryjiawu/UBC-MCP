@@ -1,0 +1,111 @@
+{
+  "format": "ubc-practice/1",
+  "title": "APSC 160 Sample Midterm B (Feb 2018 exam coding questions)",
+  "description": "",
+  "settings": {
+    "time_limit_min": 60,
+    "max_attempts": 5,
+    "language": "c"
+  },
+  "questions": [
+    {
+      "title": "Q2 Table of sin(cx) with maximum",
+      "prompt": "**From APSC 160 Midterm Exam \u2013 February 6, 2018 (Sample B), Q2 [15].**\n\nComplete the program below so that it:\n\n- prompts the user for the number of rows of data (nRows) in a table of values\n- prompts the user for the number of columns of data (nCols) in a table of values (excluding the first)\n- prints a table of values of the function sin(cx) for increasing values of c (1, 2, 3, \u2026 determined by the number of columns) and for each of the following input values: \u03c0/nRows, 2\u03c0/nRows, 3\u03c0/nRows, \u2026, \u03c0 as illustrated below\n- prints the maximum value in the table and the value of x that produced that value, also as illustrated below; note that if the maximum value occurs more than once, your program may print any one of the corresponding values of x (but only one)\n\n```\nnRows: 5, nCols: 1              nRows: 8, nCols: 3\nx      sin(x)                   x      sin(x)  sin(2x) sin(3x)\n0.628  0.5878                   0.393  0.3827  0.7071  0.9239\n1.257  0.9511                   0.785  0.7071  1.0000  0.7071\n1.885  0.9511                   1.178  0.9239  0.7071 -0.3827\n2.513  0.5878                   1.571  1.0000  0.0000 -1.0000\n3.142  0.0000                   1.963  0.9239 -0.7071 -0.3827\n                                2.356  0.7071 -1.0000  0.7071\n                                2.749  0.3827 -0.7071  0.9239\n                                3.142  0.0000 -0.0000  0.0000\n```\n\nNote that the tables above represent only two possible outputs \u2013 your program must be able to handle any reasonable number of rows and columns input by the user. Pay particular attention to the number of decimal places to which the output is printed and the alignment of data in each column \u2013 your program must produce output exactly as illustrated above. However, the column headers (on the first row of output) are for your reference only and must not be printed by your program.\n\nStarter code:\n\n```\n/*\n     Author: You\n     Date: February 6th, 2018\n     Purpose: Generates a table of values for the function sin(cx) for\n     various integer values of c and input values x\n*/\n#include <stdio.h>\n#include <math.h>\n#define PI acos(-1.0)\n\nint main(void) {\n```\n\n**Exact output format for grading** (from the official solution):\n\n- Prompts (no newline): `Please enter number of rows in table: ` and `Please enter number of columns in table (excluding the first): `\n- Each row: x with `%4.3f`, then each value with `%8.4f`, then a newline\n- Last line (one line): `Maximum output value of %.4f occurs at x = %.3f` + newline\n- When the maximum ties, report the **first** x where it occurs (strict `>` comparison).",
+      "reference": "#include <stdio.h>\n#include <math.h>\n#define PI acos(-1.0)\nint main(void) {\n    double x;\n    double data;\n    double xAtMax;\n    double dataMax = -2.0;\n    int numRows;\n    int numCols;\n    int countRows;\n    int countCols;\n    printf(\"Please enter number of rows in table: \");\n    scanf(\"%d\", &numRows);\n    printf(\"Please enter number of columns in table (excluding the first): \");\n    scanf(\"%d\", &numCols);\n    countRows = 1;\n    while (countRows <= numRows) {\n        x = countRows * PI / numRows;\n        printf(\"%4.3f\", x);\n        countCols = 1;\n        while (countCols <= numCols) {\n            data = sin(countCols * x);\n            if (data > dataMax) {\n                dataMax = data;\n                xAtMax = x;\n            }\n            printf(\"%8.4f\", data);\n            countCols++;\n        }\n        printf(\"\\n\");\n        countRows++;\n    }\n    printf(\"Maximum output value of %.4f occurs at x = %.3f\\n\", dataMax, xAtMax);\n    return 0;\n}\n",
+      "language": "c",
+      "topic": "loops",
+      "difficulty": 3,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [
+        [
+          5,
+          1
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          12,
+          5
+        ]
+      ],
+      "num_tests": 12,
+      "inputs": {
+        "nCols": "int(1..5)",
+        "nRows": "int(1..12)"
+      },
+      "kind": "program",
+      "stdin": "{nRows}\n{nCols}\n",
+      "visible_failures": 3,
+      "function": "main",
+      "file_data": {},
+      "examples": [
+        {
+          "stdin": "2\n4\n",
+          "stdout": "Please enter number of rows in table: Please enter number of columns in table (excluding the first): 1.571  1.0000  0.0000 -1.0000 -0.0000\n3.142  0.0000 -0.0000  0.0000 -0.0000\nMaximum output value of 1.0000 occurs at x = 1.571\n"
+        },
+        {
+          "stdin": "4\n3\n",
+          "stdout": "Please enter number of rows in table: Please enter number of columns in table (excluding the first): 0.785  0.7071  1.0000  0.7071\n1.571  1.0000  0.0000 -1.0000\n2.356  0.7071 -1.0000  0.7071\n3.142  0.0000 -0.0000  0.0000\nMaximum output value of 1.0000 occurs at x = 0.785\n"
+        }
+      ]
+    },
+    {
+      "title": "Q3 Clamp sensor data input.dat \u2192 output.dat",
+      "prompt": "**From APSC 160 Midterm Exam \u2013 February 6, 2018 (Sample B), Q3 [15].**\n\nYou are given a text file which contains numerical data like the sample below (four lines are shown here but there may be many more lines of data in the file).\n\n```\n 0.91\n 1.08\n-0.01\n 0.25\n```\n\nEach line contains a sensory measurement. This measurement is expected to be between 0 and 1 (inclusive). However, due to noise, some values are outside of that range. Before any interesting scientific analysis, one needs to pre-process this data so that:\n\n- Any number greater than 1.00 is converted to 1.00\n- Any number below 0.00 is converted to 0.00\n\nWrite a C program that performs this pre-processing. You are to read this data from the file `input.dat` and copy the preprocessed values to the file `output.dat` while keeping the same format (one value per line).\n\nStarter code:\n\n```\n/*\n Author: Alan T\n Date: Feb 6, 2018\n Purpose: Read numerical data from input.dat and copy it to\n output.dat after processing as follows:\n       * any number greater than 1.00 will be converted to 1.00\n       * any number below 0.00 will be converted to 0.00\n*/\n#include <stdio.h>\n#define INPUTFILE \"input.dat\"\n#define OUTPUTFILE \"output.dat\"\n\nint main(void) {\n```\n\n**Grading details** (from the official solution): write each value to `output.dat` with `%.2f` and a newline. If `input.dat` can't be opened, print `Error opening input file; program terminating.` followed by a newline.",
+      "reference": "#include <stdio.h>\n#define INPUTFILE \"input.dat\"\n#define OUTPUTFILE \"output.dat\"\nint main(void) {\n    FILE* inFile;\n    FILE* outFile;\n    double nextVal;\n    inFile = fopen(INPUTFILE, \"r\");\n    if (inFile == NULL)\n        printf(\"Error opening input file; program terminating.\\n\");\n    else {\n        outFile = fopen(OUTPUTFILE, \"w\");\n        if (outFile == NULL) {\n            printf(\"Error opening output file; program terminating.\\n\");\n            fclose(inFile);\n        }\n        else {\n            while (fscanf(inFile, \"%lf\", &nextVal) == 1) {\n                if (nextVal < 0)\n                    fprintf(outFile, \"%.2f\\n\", 0.0);\n                else if (nextVal > 1)\n                    fprintf(outFile, \"%.2f\\n\", 1.0);\n                else\n                    fprintf(outFile, \"%.2f\\n\", nextVal);\n            }\n            fclose(inFile);\n            fclose(outFile);\n        }\n    }\n    return 0;\n}\n",
+      "language": "c",
+      "topic": "file_io",
+      "difficulty": 2,
+      "points": 15,
+      "constraints": {},
+      "edge_cases": [],
+      "num_tests": 12,
+      "input_files": {
+        "input.dat": "{lines:values}\n"
+      },
+      "output_files": [
+        "output.dat"
+      ],
+      "file_data": {
+        "values": "list[float(-0.5..1.5)](0..15)"
+      },
+      "missing_file_test": true,
+      "kind": "program",
+      "stdin": "",
+      "visible_failures": 3,
+      "inputs": {},
+      "function": "main",
+      "examples": [
+        {
+          "files": {
+            "input.dat": "1.0\n0.51\n1.44\n1.26\n0.88\n-0.13\n"
+          },
+          "out_files": {
+            "output.dat": "1.00\n0.51\n1.00\n1.00\n0.88\n0.00\n"
+          },
+          "no_files": false,
+          "stdin": "",
+          "stdout": ""
+        },
+        {
+          "files": {
+            "input.dat": "0.22\n1.22\n1.15\n1.41\n1.32\n0.48\n1.21\n-0.48\n0.69\n-0.04\n1.11\n0.82\n1.35\n"
+          },
+          "out_files": {
+            "output.dat": "0.22\n1.00\n1.00\n1.00\n1.00\n0.48\n1.00\n0.00\n0.69\n0.00\n1.00\n0.82\n1.00\n"
+          },
+          "no_files": false,
+          "stdin": "",
+          "stdout": ""
+        }
+      ]
+    }
+  ]
+}

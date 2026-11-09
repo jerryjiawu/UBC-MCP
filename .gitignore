@@ -11,3 +11,4 @@ gmail_token.json
 .mcp_mommy_pids/
 .rag_cache.npz
 prairie_practice/data/
+.ssh_known_hosts

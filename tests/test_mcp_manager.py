@@ -1,4 +1,6 @@
 import atexit
+import os
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -62,6 +64,46 @@ class DashboardTests(unittest.TestCase):
             brief = self.client.get("/api/brief").json
         self.assertFalse(brief["exists"])
         self.assertIn("no brief yet", brief["text"])
+
+
+class SshConfigTests(unittest.TestCase):
+    def setUp(self):
+        self.client = mcp_manager.app.test_client()
+        fd, self.env_path = tempfile.mkstemp(suffix=".env")
+        os.close(fd)
+        with open(self.env_path, "w") as fh:
+            fh.write("OTHER=keep\n")
+        self.patch = patch.object(mcp_manager, "ENV_PATH", self.env_path)
+        self.patch.start()
+        self.server = Mock()
+        self.server.is_running.return_value = True
+        self.managed = patch.dict(mcp_manager.managed, {"ssh-mcp": self.server})
+        self.managed.start()
+
+    def tearDown(self):
+        self.managed.stop()
+        self.patch.stop()
+        os.remove(self.env_path)
+
+    def test_save_and_read_never_returns_password(self):
+        body = {"ssh_host": "h.example", "ssh_port": "2222",
+                "ssh_username": "me", "ssh_password": "p'w\"d"}
+        data = self.client.post("/api/ssh/config", json=body).json
+        self.assertEqual(data, {"ssh_host": "h.example", "ssh_port": "2222",
+                                "ssh_username": "me", "has_password": True})
+        self.server.stop.assert_called_once()
+        self.server.start.assert_called_once()
+        env = mcp_manager.dotenv_values(self.env_path)
+        self.assertEqual(env["SSH_PASSWORD"], "p'w\"d")
+        self.assertEqual(env["OTHER"], "keep")
+        # blank password keeps the saved one
+        self.client.post("/api/ssh/config", json={**body, "ssh_password": ""})
+        self.assertEqual(mcp_manager.dotenv_values(self.env_path)["SSH_PASSWORD"], "p'w\"d")
+
+    def test_rejects_bad_input(self):
+        self.assertEqual(self.client.post("/api/ssh/config", json={"ssh_port": "99999"}).status_code, 400)
+        self.assertEqual(self.client.post("/api/ssh/config", json={"ssh_host": "a\nb"}).status_code, 400)
+        self.server.start.assert_not_called()
 
 
 if __name__ == "__main__":
