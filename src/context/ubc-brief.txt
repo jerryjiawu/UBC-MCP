@@ -1,79 +1,58 @@
-UBC BRIEF - updated Thursday Oct 29  09:51 PM PDT
+UBC BRIEF — updated Mon Nov 09  11:01 PST
 
 >> DO NEXT
-1. Finish MATH 100 WW7 on WeBWorK (15 of 26 probs left, ~45 min) - due TONIGHT 11:59 PM, only ~2 hrs away.
-2. Do APSC 160 PreLab5 (Arrays) on PrairieLearn (~30 min, not started) - gates Lab Quiz 4, Sat 4 PM.
-3. Finish MATH 100 ComPAIR #2 comparison phase, 6 peer comparisons (~30 min) - closes Fri 11:59 PM.
-4. Review for PHYS 157 Midterm (~60-90 min) - Fri 6:30-8 PM in person, room still unposted.
-5. Submit Module 1 iPeer Evaluation (~15 min) - late since Oct 26, losing 2%/day, locks for good Mon 8 AM.
-6. Confirm/do CHEM 154 Expt 14 Stemble pre-lab (~20 min, on Stemble, not Canvas) - gates Mon 2-5 PM Zoom lab.
-7. Email the APSC 100 module lead re: locked Cardboard Chair Video Pitch (~10 min) - Canvas lock is permanent.
-8. Clear 4 small APSC 100 items due Mon 8 AM: Learning-9 quiz, 2 M3-W9 quizzes, Video 3 (~20 min combined).
-Tonight: #1 before 11:59 PM. Fri daytime before the midterm: #2, #3. Weekend: #5-8 before Mon 8 AM.
+1. CHEM 154 Achieve Assignment #7 (Energy & Chemistry) - 45 min - due TONIGHT 11:59 PM, zero grace.
+2. Book APSC 160 PrairieTest: Quiz 6 + Midterm 2 - 10 min - no seat booked yet, window opens Mon, ORCA fills fast.
+3. MATH 100 WW9 - 2-3 hrs - due Thu 11:59 PM, still 0/27 problems, biggest unstarted load.
+4. PrairieLearn PreLab5 (Arrays) + PreLab6 (Strings) - 75 min - both "Not started," likely gate the Nov 16 lab quiz.
+5. 6 small APSC 100 items (quizzes/video/letter/team spec) - 60 min - all due Thu ~8 AM.
+6. PHYS 157 Written HW 6 + Reading Quiz Wk10 - 45 min - due Fri (HW 11:59 PM, quiz ~8 AM).
+7. Email APSC 100 module lead re: Cardboard Chair concession - 15 min - locked 3+ weeks, only path left.
+8. Re-run Google Tasks auth: python google_tasks_mcp.py --auth - 5 min - task list has been blind ~3 weeks.
 
-[!] BLOCKERS - no feed will ever remind you
-PreLab5 (Arrays) not started -> blocks Lab Quiz 4, Sat Oct 31, 4:00 PM, ORCA ICCS 008
-Stemble pre-lab for Expt 14, unconfirmed -> blocks CHEM 154 Zoom lab, Mon Nov 2, 2 PM (10-min join window)
-PrairieTest: Lab Quiz 4 + 5 already booked. Next PHYS 157 ORCA window (wk of Nov 16) not yet open - nothing to book yet.
+Today (break, no class): finish #1 tonight, book #2 anytime today.
+Tue/Wed (still break, free days): push hard on WW9 (#3) and both PreLabs (#4); clear #5-#7 before Thu AM.
+
+[!] BLOCKERS
+PreLab5 (Arrays) & PreLab6 (Strings) not started -> gate the APSC 160 lab quiz in the Nov 16-20 window
+PrairieTest seat not booked -> APSC 160 Quiz 6 (Nov 16-20) and Midterm 2 (Nov 16-19)
+PHYS 157 ORCA Quiz 3 shows Nov 16-21 on PrairieTest but has no booking link yet -> not open for registration, recheck
+CHEM 154 Stemble pre-lab -> no in-lab session Nov 9 or Nov 16; next one is Nov 30 (pre-lab opens ~Nov 23)
 
 [!] OVERDUE
-Cardboard Chair Video Pitch (APSC 100) - permanently locked, unsubmitted. Needs instructor/module-lead concession; can't be fixed in Canvas.
-Module 1 iPeer Evaluation (APSC 100) - due Oct 26, still open, losing 2%/day late. Locks for good Mon Nov 2, 8 AM.
+Cardboard Chair Video Pitch (APSC 100) - locked & unsubmitted since Oct 19/26, needs instructor concession (unresolved 3+ weeks)
 
-TODAY - Thursday Oct 29
-MATH 100 small class 1-2 PM BUCH B313 (passed). WRDS 150 lecture 7-10 PM LIFE 2109 (in progress now).
-MATH 100 WW7 due 11:59 PM tonight - currently 42% (11/26 problems).
+TODAY — Mon Nov 09
+Midterm break (no classes) - CHEM 154 Achieve Assignment #7 due 11:59 PM tonight, still unsubmitted.
 
-FRIDAY IS THE PILEUP - Oct 30
- 8:00-9:00 AM   APSC 100 lecture, LIFE 2201
- 3:30-5:00 PM   APSC 160 lecture, WESB 100
- ~6:15 PM       be seated - PHYS 157 Midterm, room still not posted on Canvas
- 6:30-8:00 PM   PHYS 157 Midterm, in person
- 11:59 PM       MATH 100 ComPAIR #2 comparison phase closes - verify all 6 comparisons done
- 11:59 PM       APSC 160 WS20 + WS21 100%-credit windows close - both already at 100%, no action
-
+THURSDAY IS THE PILEUP — Nov 12, classes resume
+~8:00        6x APSC 100 items due: Letter Exercise, CAD/OT/RapidProto quizzes, Video 3, Team Design Spec 1 (DST quirk, see note below - verify exact time)
+11:00-12:30  CHEM 154 lecture, CHEM B250
+13:00-14:00  MATH 100 small class, BUCH B313
+15:30-17:00  APSC 160 lecture, WESB 100
+19:00-22:00  WRDS 150 lecture, LIFE 2109
+23:59        MATH 100 WW9 due (0/27 as of this morning)
 --- reference ----------------------------------------------------------
 
 NEXT 7 DAYS
-Thu Oct 29 (today) - MATH100 small class 1-2 BUCH B313 [passed]. WRDS150 lecture 7-10 PM LIFE2109 [now].
-                     MATH100 WW7 due 11:59 PM - 42% (11/26), in progress.
-Fri Oct 30         - APSC100 lec 8-9 LIFE2201. APSC160 lec 3:30-5 WESB100.
-                     PHYS157 Midterm 6:30-8 PM in person, room TBD.
-                     WS20/WS21 100% windows close 11:59 PM (done, 100% each).
-                     MATH100 ComPAIR#2 comparison phase closes 11:59 PM (unconfirmed).
-Sat Oct 31         - APSC160 Lab Quiz 4, ORCA 4:00 PM, ICCS 008 (booked). PreLab5 not started - do first.
-Sun Nov 1          - nothing scheduled.
-Mon Nov 2          - APSC100 lec 8-9 LIFE2201, studio 10-12 EDC301.
-                     4 APSC100 items due 8 AM: Learning-9 quiz, M3-W9-V1 quiz, M3-W9-V2 quiz, Video 3.
-                     Module 1 iPeer late window closes 8 AM - last chance before permanent lock.
-                     CHEM154 in-lab Zoom Expt14 (thermo) 2-5 PM - join <10 min or marked absent;
-                       gated by a Stemble pre-lab not checkable from this pipeline.
-                     MATH100 ComPAIR#2 self-reflection phase closes 11:59 PM.
-Tue Nov 3          - APSC160 Lab Quiz 5, ORCA 9:00 AM, ICCS 008 (booked). PHYS157 tutorial 2-3 HEBB218.
-                     CHEM154 lecture 11-12:30 CHEM B250. APSC160 lec 3:30-5 WESB100.
-Wed Nov 4          - MATH100 large class 12-2 IRC2 - Quiz 2 presumed written at start of class (20 min,
-                       same format as Quiz 1), NOT individually reconfirmed; the Brightspace feed's
-                       "Quiz 2 - Due" 11:59 PM event looks like the same stale-duplicate pattern as
-                       WW6/WW7 - confirm on Brightspace closer to the day.
-                     APSC160 lab 4-6 CEME2212 (regular lab, no quiz).
-Thu Nov 5          - MATH100 small class 1-2 BUCH B313. MATH100 WW8 due 11:59 PM - currently 0% (28 probs).
+Mon Nov 09 (today)  midterm break, no class                             CHEM154 Assignment#7 due 11:59P
+Tue Nov 10          midterm break, no class                             WeBWorK WW10 opens 12:01A
+Wed Nov 11          midterm break / Remembrance Day                     nothing due
+Thu Nov 12          classes resume: CHEM154 11-12:30, MATH100 1-2P,     6 APSC100 items ~8A; WW9 due 11:59P
+                    APSC160 3:30-5P, WRDS150 7-10P
+Fri Nov 13          APSC100 8-9A, PHYS157 9-10A                         PHYS157 ReadingQuiz Wk10 ~8A; WrittenHW6 due 11:59P
+Sat Nov 14          nothing scheduled
+Sun Nov 15          nothing scheduled
+Mon Nov 16          APSC100 8-9A+studio 10-12, APSC160 3:30-5P          PrairieTest windows OPEN (Quiz6/Midterm2); CHEM154
+                                                                         Assignment#8 due 11:59P; APSC100 Wk11 items+TeamSub2 ~8A
 
 STATUS
-MATH 100 WeBWorK (checked live, page generated 9:49 PM PDT tonight):
-  Diagnostic 76% (closed). Tutorial 0/7 (optional, open to Dec 7).
-  WW1-WW6: 100% each (closed). WW7: 42%, 11/26, due tonight. WW8: 0%, 28 probs, due Thu Nov 5.
-  WW9 opens Nov 4, 12:01 AM.
-APSC 160 PrairieLearn (checked live): WS1-WS21 all 100%. PreLab1-3 100%, PreLab4 50%,
-  PreLab5 Not started (see blockers). PreLab6 avail Nov 5, PreLab7 Nov 17, PreLab8 Nov 24.
-  Lab Quiz 0-2 100%, Lab Quiz 3 72%. Lab Attendance Lab 2 0/3 - not re-checked this run, worth a look.
-Google Tasks - UNREACHABLE again this run: invalid_grant, token expired/revoked (ongoing since
-  roughly Oct 19-20). Fix: Jerry runs python google_tasks_mcp.py --auth in the UBC MCP folder. Sync
-  health and the ~100-item list could not be verified from this pipeline.
-PHYS 157 Midterm room - checked announcements and the course front page this run; still nothing posted.
-  The "midterm logistics" doc referenced in announcements wasn't reachable (Files API unauthorized,
-  Pages API disabled for this course) - check the Canvas course home page directly, closer to Friday.
-Looks off: the shared ubc-mcp browser session died mid-run on the WeBWorK LTI launch (open_platform
-  timed out twice) - recovered via restart_browser() plus the direct WeBWorK grades URL. Not a data
-  problem, just flagging in case tomorrow's run needs the same fix.
-Not reconfirmed this run (carried from prior): PHYS157 Reading Quiz Week 6 unsubmitted, no late
-  penalty; CAD Assignment 1 Quiz pending_review, non-actionable.
+MATH100 WeBWorK: WW1-8 all 100%; WW9 0% (0/27, due Thu); WW10 opens Nov 11, 12:01A; Diagnostic 76% (closed)
+APSC160 PrairieLearn: WS1-21 all 100%; Lab0-2 100%, Lab3 72%; PreLab1-3 100%, PreLab4 50%, PreLab5/6 Not started, PreLab7 opens Nov 17
+Google Tasks: UNREACHABLE (invalid_grant), ~3 weeks running. Fix: run python google_tasks_mcp.py --auth in the UBC MCP folder on this laptop.
+Cardboard Chair Video Pitch: still locked + unsubmitted, unchanged, needs concession.
+Module 1 iPeer Evaluation: now shows graded - resolved since the last check.
+Note: Nov 12/13 due-times convert to ~7:00 AM via timezone math, but Canvas's own reminder text says "8 AM" - likely the same DST-export
+quirk as the known 06:59Z-shift bug. This brief uses 8 AM; verify directly on Canvas if exact timing matters.
+Not re-checked this run: PHYS157 (Oct30) and APSC100 (Nov2) midterm grades, Workday final exam dates, CHEM154 Achieve % on open
+assignments, WRDS150 Peer Review Draft (due Wed Nov 18, just past this window), the unresolved "EDTSO" Design Team Safety Module 5 Quiz.

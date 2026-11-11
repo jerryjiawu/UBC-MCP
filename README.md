@@ -42,6 +42,15 @@ Early development. Currently implemented:
 
    The Google credentials come from an OAuth "Desktop app" client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) with the Tasks API enabled.
 
+### Linux / headless Debian server
+
+```bash
+git clone https://github.com/jerryjiawu/UBC-MCP.git && cd UBC-MCP
+./install-linux.sh            # --no-apt / --no-claude-code / --no-service to skip steps
+```
+
+Installs Chromium, a `.venv` (CPU-only PyTorch), and Claude Code. It also registers the MCP servers with Claude Code and runs MCP Mommy headless as the `mcp-mommy` systemd service. Re-running it is safe. The dashboard stays on `127.0.0.1:5055`, so reach it with `ssh -L 5055:127.0.0.1:5055 you@server`. Google sign-in works over SSH: `--auth` prints the tunnel command to use. You can also copy `google_token.json` and `gmail_token.json` over from a machine that's already signed in. The screenshot uploader is Windows-only and is skipped. CWL Duo works by phone push only.
+
 ## Usage
 
 Run the CWL login script directly to test authentication:

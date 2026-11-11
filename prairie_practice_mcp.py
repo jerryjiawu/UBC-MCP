@@ -48,7 +48,8 @@ def _ensure_app():
     if _app_running():
         return True
     os.makedirs(store.DATA_DIR, exist_ok=True)
-    venv_py = os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe")
+    venv_py = (os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe") if os.name == "nt"
+               else os.path.join(PROJECT_ROOT, ".venv", "bin", "python"))
     python = venv_py if os.path.exists(venv_py) else sys.executable
     if os.name == "nt":
         # MCP clients run this server inside a Windows job object that kills every
@@ -310,7 +311,11 @@ def open_practice_app(open_browser: bool = True, set_id: str | None = None) -> d
     if set_id:
         open_inst = next((s["open_instance"] for s in store.list_sets() if s["id"] == set_id), None)
         url = f"{APP_URL}/instance/{open_inst}" if open_inst else APP_URL
-    if open_browser:
+    # On a headless Linux box webbrowser.open could launch a text-mode browser
+    # (lynx/w3m) that grabs this stdio server's terminal -- only open with a desktop.
+    has_desktop = os.name == "nt" or sys.platform == "darwin" or bool(
+        os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY"))
+    if open_browser and has_desktop:
         webbrowser.open(url)
     return {"url": url}
 

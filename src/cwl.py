@@ -41,11 +41,17 @@ def _kill_orphaned_chromedriver():
         pass
 
 
+def _no_display():
+    """Linux server with no X/Wayland: a visible browser window is impossible."""
+    return os.name != "nt" and not (os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY")) \
+        and os.uname().sysname == "Linux"
+
+
 def default_headless():
     """Headless unless SELENIUM_HEADLESS=0. Duo push approval happens on the phone,
     not in the browser window, so hidden is safe by default; the window is shown
     only when a person actually needs to act in it (see relaunch())."""
-    return os.getenv("SELENIUM_HEADLESS", "1") != "0"
+    return _no_display() or os.getenv("SELENIUM_HEADLESS", "1") != "0"
 
 
 def get_driver(profile_dir=None, headless=None):
@@ -53,9 +59,14 @@ def get_driver(profile_dir=None, headless=None):
     from selenium.webdriver.chrome.options import Options
 
     use_headless = default_headless() if headless is None else headless
+    if _no_display():
+        use_headless = True  # no screen to show a window on; Duo push still works
 
     def build(user_data_dir):
         options = Options()
+        if os.getenv("CHROME_BINARY"):
+            # e.g. /usr/bin/chromium on Debian (set by install-linux.sh)
+            options.binary_location = os.getenv("CHROME_BINARY")
         options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument("--profile-directory=Default")
         # newer Chrome versions refuse the DevTools handshake without this
@@ -66,6 +77,11 @@ def get_driver(profile_dir=None, headless=None):
             # without these, headless Chrome reliably hangs on startup in this environment
             options.add_argument("--disable-gpu")
             options.add_argument("--no-sandbox")
+            # small /dev/shm on servers/containers makes Chrome crash mid-page
+            options.add_argument("--disable-dev-shm-usage")
+        if os.getenv("CHROMEDRIVER"):
+            from selenium.webdriver.chrome.service import Service
+            return webdriver.Chrome(options=options, service=Service(os.getenv("CHROMEDRIVER")))
         return webdriver.Chrome(options=options)
 
     target_dir = profile_dir or PROFILE_DIR
@@ -226,7 +242,8 @@ def CWL_login(driver, url):
         time.sleep(0.5)
         if "duosecurity.com" in driver.current_url:
             _notify_duo_push()
-            was_headless = getattr(driver, "_mcp_headless", False)
+            # no screen (headless server): nothing to unhide, just wait for the push
+            was_headless = getattr(driver, "_mcp_headless", False) and not _no_display()
             if was_headless:
                 # Duo may need a manual step (pick a method, "remember this device", etc.) --
                 # unhide the browser so the user can finish it themselves

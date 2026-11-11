@@ -90,7 +90,15 @@ def _run_auth_flow():
         print("error: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first")
         return
     flow = InstalledAppFlow.from_client_config(CLIENT_CONFIG, SCOPES)
-    creds = flow.run_local_server(port=0)
+    if os.name != "nt" and not (os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY")):
+        # Headless server: no browser here, so forward the callback port over SSH.
+        port = int(os.getenv("OAUTH_PORT", "8765"))
+        print(f"No desktop on this machine. On your own computer run:\n"
+              f"  ssh -L {port}:localhost:{port} <user>@<this-server>\n"
+              f"then open the URL below in your browser and sign in.\n")
+        creds = flow.run_local_server(port=port, open_browser=False)
+    else:
+        creds = flow.run_local_server(port=0)
     with open(TOKEN_FILE, "w", encoding="utf-8") as f:
         f.write(creds.to_json())
     print(f"saved credentials to {TOKEN_FILE}")

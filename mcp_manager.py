@@ -7,6 +7,7 @@ interface, do not add port forwarding, and do not run it on a shared machine.
 """
 import atexit
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -16,13 +17,21 @@ from collections import deque
 
 from dotenv import dotenv_values, set_key
 from flask import Flask, jsonify, render_template, request, send_file
-from PIL import Image, ImageDraw
-import pystray
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+IS_WINDOWS = os.name == "nt"
 
-_venv_python = os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe")
+if IS_WINDOWS:
+    _venv_python = os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe")
+else:
+    _venv_python = os.path.join(PROJECT_ROOT, ".venv", "bin", "python")
 PYTHON = _venv_python if os.path.exists(_venv_python) else sys.executable
+
+# Windows-only flag; 0 (no-op) everywhere else.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+# Services that only make sense on Windows (Windows screenshot folders + WinRT OCR).
+WINDOWS_ONLY = {"screenshot-uploader"}
 
 SERVERS = {
     "ubc-mcp": os.path.join(PROJECT_ROOT, "mcp_server.py"),
@@ -36,6 +45,8 @@ SERVERS = {
     "prairie-practice-app": os.path.join(PROJECT_ROOT, "prairie_practice", "app.py"),
     "ssh-mcp": os.path.join(PROJECT_ROOT, "ssh_mcp.py"),
 }
+if not IS_WINDOWS:
+    SERVERS = {k: v for k, v in SERVERS.items() if k not in WINDOWS_ONLY}
 
 LOG_LINES = 200
 
@@ -62,13 +73,55 @@ class ManagedServer:
         self.pid_file = os.path.join(PIDS_DIR, f"{name}.pid")
 
     def _kill_tree(self, pid):
-        # /T kills the whole process tree, not just this pid -- some launches on
-        # this system leave a surviving child that plain terminate()/kill() miss.
-        subprocess.run(
-            ["taskkill", "/F", "/T", "/PID", str(pid)],
-            capture_output=True,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
+        if IS_WINDOWS:
+            # /T kills the whole process tree, not just this pid -- some launches on
+            # this system leave a surviving child that plain terminate()/kill() miss.
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(pid)],
+                capture_output=True,
+                creationflags=NO_WINDOW,
+            )
+            return
+        # POSIX: children are started in their own session (start_new_session), so
+        # the pid is also the process-group id -- signal the whole group, e.g.
+        # chromedriver + chromium spawned by ubc-mcp.
+        try:
+            os.killpg(pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            return
+        # Our own child stays a zombie (still "exists" to killpg) until reaped, so
+        # poll it through Popen; a stale orphan from an earlier run isn't ours.
+        proc = self.process if self.process and self.process.pid == pid else None
+        for _ in range(50):
+            if proc is not None:
+                if proc.poll() is not None:
+                    break
+            else:
+                try:
+                    os.killpg(pid, 0)
+                except ProcessLookupError:
+                    return
+            time.sleep(0.1)
+        # Leader is gone (or ignored SIGTERM): take out anything left in its group,
+        # e.g. a chromedriver/chromium that outlived ubc-mcp.
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    def _command_line(self, pid):
+        if IS_WINDOWS:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 f"(Get-CimInstance Win32_Process -Filter 'ProcessId={pid}').CommandLine"],
+                capture_output=True, text=True, timeout=5, creationflags=NO_WINDOW,
+            )
+            return result.stdout or ""
+        try:
+            with open(f"/proc/{pid}/cmdline", "rb") as fh:
+                return fh.read().replace(b"\0", b" ").decode("utf-8", "replace")
+        except OSError:
+            return ""
 
     def _kill_stale_orphan(self):
         """If a previous MCP Mommy run left this exact child still alive (its own
@@ -81,13 +134,7 @@ class ManagedServer:
         try:
             with open(self.pid_file) as f:
                 old_pid = int(f.read().strip())
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 f"(Get-CimInstance Win32_Process -Filter 'ProcessId={old_pid}').CommandLine"],
-                capture_output=True, text=True, timeout=5,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-            if os.path.basename(self.script_path) in (result.stdout or ""):
+            if os.path.basename(self.script_path) in self._command_line(old_pid):
                 self._kill_tree(old_pid)
         except Exception:
             pass
@@ -114,7 +161,9 @@ class ManagedServer:
             bufsize=1,
             # a console-subsystem child spawned from a windowless (pythonw) parent
             # would otherwise pop up its own blank terminal window on Windows
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            creationflags=NO_WINDOW,
+            # POSIX: own process group so _kill_tree can take down grandchildren
+            start_new_session=not IS_WINDOWS,
         )
         with open(self.pid_file, "w") as f:
             f.write(str(self.process.pid))
@@ -284,11 +333,43 @@ def api_quit():
     return jsonify({"ok": True})
 
 
+def _headless():
+    """No tray icon when asked (--headless / MCP_MOMMY_HEADLESS=1) or when there is
+    no desktop to put one on (Linux server without X/Wayland)."""
+    if "--headless" in sys.argv or os.getenv("MCP_MOMMY_HEADLESS") == "1":
+        return True
+    if IS_WINDOWS or sys.platform == "darwin":
+        return False
+    return not (os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY"))
+
+
+def _run_headless(port):
+    # systemd stops services with SIGTERM; turn that into a clean shutdown so
+    # every managed child gets stopped and its pid file removed.
+    def _on_signal(signum, frame):
+        _stop_all()
+        os._exit(0)
+
+    signal.signal(signal.SIGTERM, _on_signal)
+    signal.signal(signal.SIGINT, _on_signal)
+    print(f"MCP Mommy (headless) dashboard on http://127.0.0.1:{port}", flush=True)
+    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+
+
 if __name__ == "__main__":
     for srv in managed.values():
         srv.start()
     port = int(os.getenv("MCP_MANAGER_PORT", "5055"))
     url = f"http://127.0.0.1:{port}"
+
+    try:
+        if _headless():
+            raise ImportError("headless")
+        from PIL import Image, ImageDraw
+        import pystray
+    except ImportError:
+        _run_headless(port)
+        sys.exit(0)
 
     threading.Thread(
         target=lambda: app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False),

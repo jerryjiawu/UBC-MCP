@@ -5,7 +5,8 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 flask
-pystray
+# tray icon: desktop only; MCP Mommy runs headless without it
+pystray; sys_platform == "win32" or sys_platform == "darwin"
 pillow
 requests
 discord.py
@@ -15,12 +16,15 @@ sentence-transformers
 numpy
 watchdog
 pypdf
-winrt-runtime
-winrt-Windows.Foundation
-winrt-Windows.Foundation.Collections
-winrt-Windows.Globalization
-winrt-Windows.Graphics.Imaging
-winrt-Windows.Media.Ocr
-winrt-Windows.Storage.Streams
+# Windows built-in OCR for the screenshot uploader (Windows only)
+winrt-runtime; sys_platform == "win32"
+winrt-Windows.Foundation; sys_platform == "win32"
+winrt-Windows.Foundation.Collections; sys_platform == "win32"
+winrt-Windows.Globalization; sys_platform == "win32"
+winrt-Windows.Graphics.Imaging; sys_platform == "win32"
+winrt-Windows.Media.Ocr; sys_platform == "win32"
+winrt-Windows.Storage.Streams; sys_platform == "win32"
 ziglang
 paramiko
+# WATCHDOG desktop app window (Windows)
+pywebview; sys_platform == "win32"
