@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WATCHDOG</string>
+    <string name="service_label">WATCHDOG lockdown</string>
+    <string name="service_description">Locks this phone while WATCHDOG study mode is on (toggled from your PC). Only calls, emergency and alarms stay available. WATCHDOG only reads which app is in front; it does not read screen content, typing or messages.</string>
+</resources>

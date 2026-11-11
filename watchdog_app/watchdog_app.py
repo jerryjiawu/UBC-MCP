@@ -2,8 +2,11 @@
 
 Toggling study mode ON runs `~/govee/mood study` on the NUC over SSH and starts a
 stopwatch; OFF runs `~/govee/mood relax` and stops it. While studying, the apps
-in blocker.BLOCKED (currently VS Code) are closed whenever they open. Phone
-lockdown is a placeholder in the UI for now.
+in blocker.BLOCKED (currently VS Code) are closed whenever they open.
+
+Phone: each toggle also writes ~/watchdog/public/state.json on the NUC (same SSH
+session); the WATCHDOG phone app (watchdog_phone/) polls it through the NUC's
+signal server (nuc/serve.py) and locks the phone while studying.
 
 SSH target comes from the project .env: WATCHDOG_SSH_HOST/PORT/USERNAME/PASSWORD
 if set, otherwise the SSH_* settings MCP Mommy's dashboard already manages.
@@ -49,8 +52,23 @@ def _ssh_config():
     return host, int(pick("SSH_PORT", "22") or 22), user, password
 
 
-def run_mood(mode):
-    """Run the mood script on the NUC. Returns (ok, message)."""
+# The phone app polls this file (served from the NUC by watchdog_app/nuc/serve.py).
+SIGNAL_DIR = "~/watchdog/public"
+
+
+def _exec(client, command):
+    _, stdout, stderr = client.exec_command(command, timeout=30)
+    out = stdout.read().decode("utf-8", "replace").strip()
+    err = stderr.read().decode("utf-8", "replace").strip()
+    code = stdout.channel.recv_exit_status()
+    return code, (err or out or f"exit code {code}").splitlines()[-1][:120] if code else ""
+
+
+def run_remote(mode=None, signal=None):
+    """One SSH session to the NUC: write the phone signal (if given) first, so the
+    phone locks even if the lights fail, then run the mood script (if mode given).
+    Returns {"lights": (ok, msg), "phone": (ok, msg)} for whichever ran."""
+    result = {}
     try:
         host, port, user, password = _ssh_config()
         client = paramiko.SSHClient()
@@ -62,17 +80,28 @@ def run_mood(mode):
                            look_for_keys=not password, allow_agent=not password,
                            timeout=SSH_TIMEOUT, banner_timeout=SSH_TIMEOUT, auth_timeout=SSH_TIMEOUT)
             client.save_host_keys(KNOWN_HOSTS)
-            _, stdout, stderr = client.exec_command(MOOD_CMD.format(mode), timeout=30)
-            out = stdout.read().decode("utf-8", "replace").strip()
-            err = stderr.read().decode("utf-8", "replace").strip()
-            code = stdout.channel.recv_exit_status()
+            if signal is not None:
+                body = json.dumps(signal)  # only numbers/bools: safe inside single quotes
+                code, err = _exec(client, f"mkdir -p {SIGNAL_DIR} && printf '%s' '{body}' > {SIGNAL_DIR}/state.json.tmp"
+                                          f" && mv {SIGNAL_DIR}/state.json.tmp {SIGNAL_DIR}/state.json")
+                result["phone"] = (code == 0, "lock signal sent" if code == 0 else err)
+            if mode is not None:
+                code, err = _exec(client, MOOD_CMD.format(mode))
+                result["lights"] = (code == 0, f"{user}@{host} :: mood {mode}" if code == 0 else err)
         finally:
             client.close()
-        if code != 0:
-            return False, (err or out or f"exit code {code}").splitlines()[-1][:120]
-        return True, f"{user}@{host} :: mood {mode}"
     except Exception as exc:  # network down, NUC asleep, bad password...
-        return False, f"{type(exc).__name__}: {exc}"[:160]
+        msg = f"{type(exc).__name__}: {exc}"[:160]
+        if signal is not None:
+            result.setdefault("phone", (False, msg))
+        if mode is not None:
+            result.setdefault("lights", (False, msg))
+    return result
+
+
+def run_mood(mode):
+    """Lights only. Returns (ok, message)."""
+    return run_remote(mode=mode)["lights"]
 
 
 def _load_state():
@@ -99,6 +128,7 @@ class Api:
         self._state = _load_state()
         self._state.setdefault("today", {})
         self._lights = {"ok": None, "message": "idle", "busy": False}
+        self._phone = {"ok": None, "message": "idle", "busy": False}
         self._window = None
         self._blocker = Blocker()
         if self._state["studying"]:
@@ -117,13 +147,30 @@ class Api:
             "last_session": s.get("last_session", 0),
             "today_total": s["today"].get(self._today_key(), 0),
             "lights": dict(self._lights),
+            "phone": dict(self._phone),
             "apps": self._blocker.status(),
         }
 
-    def _set_lights(self, mode):
+    def _signal(self):
+        s = self._state
+        return {"studying": bool(s["studying"]), "started_at": s["started_at"], "updated": time.time()}
+
+    def _set_lights(self, mode, phone=True):
+        """Push the phone signal + lights in one SSH session (background thread)."""
         self._lights = {"ok": None, "message": f"mood {mode} ...", "busy": True}
-        ok, msg = run_mood(mode)
+        if phone:
+            self._phone = {"ok": None, "message": "sending ...", "busy": True}
+        res = run_remote(mode=mode, signal=self._signal() if phone else None)
+        ok, msg = res["lights"]
         self._lights = {"ok": ok, "message": msg, "busy": False}
+        if phone:
+            ok, msg = res["phone"]
+            self._phone = {"ok": ok, "message": msg, "busy": False}
+
+    def _push_phone(self):
+        self._phone = {"ok": None, "message": "sending ...", "busy": True}
+        ok, msg = run_remote(signal=self._signal())["phone"]
+        self._phone = {"ok": ok, "message": msg, "busy": False}
 
     # -- API ---------------------------------------------------------------
     def get_state(self):
@@ -157,12 +204,18 @@ class Api:
             s["today"] = {self._today_key(): 0}
             if s["studying"]:
                 s["started_at"] = time.time()
+                # the phone's lock screen shows the session timer: keep it in sync
+                threading.Thread(target=self._push_phone, daemon=True).start()
             _save_state(s)
         return self._snapshot()
 
     def retry_lights(self):
         mode = "study" if self._state["studying"] else "relax"
         threading.Thread(target=self._set_lights, args=(mode,), daemon=True).start()
+        return self._snapshot()
+
+    def retry_phone(self):
+        threading.Thread(target=self._push_phone, daemon=True).start()
         return self._snapshot()
 
     def minimize(self):
