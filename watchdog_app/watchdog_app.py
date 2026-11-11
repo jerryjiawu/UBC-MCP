@@ -1,8 +1,9 @@
 """WATCHDOG V1 -- study-mode switch.
 
 Toggling study mode ON runs `~/govee/mood study` on the NUC over SSH and starts a
-stopwatch; OFF runs `~/govee/mood relax` and stops it. Later modules (phone
-lockdown, app blocking) plug in as more "connectors" -- see MODULES in the UI.
+stopwatch; OFF runs `~/govee/mood relax` and stops it. While studying, the apps
+in blocker.BLOCKED (currently VS Code) are closed whenever they open. Phone
+lockdown is a placeholder in the UI for now.
 
 SSH target comes from the project .env: WATCHDOG_SSH_HOST/PORT/USERNAME/PASSWORD
 if set, otherwise the SSH_* settings MCP Mommy's dashboard already manages.
@@ -19,6 +20,8 @@ import time
 import paramiko
 import webview
 from dotenv import dotenv_values
+
+from blocker import Blocker
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(APP_DIR)
@@ -97,6 +100,9 @@ class Api:
         self._state.setdefault("today", {})
         self._lights = {"ok": None, "message": "idle", "busy": False}
         self._window = None
+        self._blocker = Blocker()
+        if self._state["studying"]:
+            self._blocker.start()  # reopened mid-session: keep blocking
 
     # -- helpers -----------------------------------------------------------
     def _today_key(self):
@@ -111,6 +117,7 @@ class Api:
             "last_session": s.get("last_session", 0),
             "today_total": s["today"].get(self._today_key(), 0),
             "lights": dict(self._lights),
+            "apps": self._blocker.status(),
         }
 
     def _set_lights(self, mode):
@@ -128,6 +135,7 @@ class Api:
             if not s["studying"]:
                 s["studying"], s["started_at"] = True, time.time()
                 mode = "study"
+                self._blocker.start()
             else:
                 elapsed = int(time.time() - (s["started_at"] or time.time()))
                 s["last_session"] = elapsed
@@ -135,9 +143,21 @@ class Api:
                 s["today"] = {day: s["today"].get(day, 0) + elapsed}  # keep only today
                 s["studying"], s["started_at"] = False, None
                 mode = "relax"
+                self._blocker.stop()
             _save_state(s)
         # SSH can take seconds -- never block the UI on it
         threading.Thread(target=self._set_lights, args=(mode,), daemon=True).start()
+        return self._snapshot()
+
+    def reset_today(self):
+        """Zero today's study total. Mid-session, the running stopwatch restarts
+        from 0 too (otherwise it would add straight back into TODAY)."""
+        with self._lock:
+            s = self._state
+            s["today"] = {self._today_key(): 0}
+            if s["studying"]:
+                s["started_at"] = time.time()
+            _save_state(s)
         return self._snapshot()
 
     def retry_lights(self):

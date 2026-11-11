@@ -90,6 +90,10 @@
 
   .stats { display: flex; gap: 28px; margin-top: 22px; padding-top: 16px; border-top: 1px solid #ffffff12;
     font: 11px var(--mono); color: var(--muted); letter-spacing: .1em; }
+  .reset { margin-left: auto; align-self: center; border: 1px solid #ffffff1c; border-radius: 8px; padding: 6px 12px;
+    font: 11px var(--mono); color: var(--muted); letter-spacing: .06em; transition: color .2s, border-color .2s; }
+  .reset:hover { color: var(--text); border-color: #ffffff40; }
+  .reset.armed { color: var(--red); border-color: var(--red); }
   .stats b { display: block; margin-top: 4px; color: var(--text); font: 600 15px "Orbitron", sans-serif; letter-spacing: .06em; }
 
   @media (prefers-reduced-motion: reduce) { .on .art, .dot.busy { animation: none; } }
@@ -125,12 +129,13 @@
       <li id="mod-lights"><span class="dot" id="led"></span><span class="mod-name">Lights</span>
         <span class="mod-info" id="status-text">connecting...</span><button type="button" class="retry" id="retry" hidden>retry</button></li>
       <li class="soon"><span class="dot"></span><span class="mod-name">Phone</span><span class="mod-info">lockdown · coming soon</span></li>
-      <li class="soon"><span class="dot"></span><span class="mod-name">Apps</span><span class="mod-info">blocker · coming soon</span></li>
+      <li id="mod-apps"><span class="dot" id="apps-dot"></span><span class="mod-name">Apps</span><span class="mod-info" id="apps-text">VS Code · allowed</span></li>
     </ul>
 
     <div class="stats">
       <div>LAST<b id="last">00:00:00</b></div>
       <div>TODAY<b id="today">00:00:00</b></div>
+      <button type="button" class="reset" id="reset-today">reset today</button>
     </div>
   </main>
 
@@ -177,6 +182,11 @@
     $('status-text').textContent = L.busy ? L.message : L.ok === false ? L.message
       : L.ok === true ? `jerry-nuc · ${on ? 'study' : 'relax'}` : 'jerry-nuc · standing by';
     $('status-text').title = L.message;
+    const A = state.apps;
+    $('apps-dot').className = 'dot ' + (A.active ? 'ok' : '');
+    const names = A.apps.join(', ');
+    $('apps-text').textContent = !A.active ? `${names} · allowed`
+      : A.blocks ? `${names} · blocked · closed ${A.blocks}x` : `${names} · blocked`;
     $('retry').hidden = L.ok !== false;
     tick();
   }
@@ -189,6 +199,19 @@
   }
 
   $('toggle').addEventListener('click', toggle);
+  // two clicks: first arms it, second (within 3s) resets
+  let resetTimer = null;
+  $('reset-today').addEventListener('click', async () => {
+    const btn = $('reset-today');
+    if (!btn.classList.contains('armed')) {
+      btn.classList.add('armed'); btn.textContent = 'click again to reset';
+      resetTimer = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = 'reset today'; }, 3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    btn.classList.remove('armed'); btn.textContent = 'reset today';
+    render(await window.pywebview.api.reset_today());
+  });
   $('retry').addEventListener('click', async () => render(await window.pywebview.api.retry_lights()));
   $('min').addEventListener('click', () => window.pywebview.api.minimize());
   $('close').addEventListener('click', () => window.pywebview.api.close());
