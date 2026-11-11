@@ -168,9 +168,65 @@ def _single_instance():
         return True
     hwnd = u32.FindWindowW(None, "WATCHDOG")
     if hwnd:
-        u32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        # SW_RESTORE brings a minimized window back to fullscreen, but would
+        # un-maximize a visible one -- so only use it when minimized.
+        u32.ShowWindow(hwnd, 9 if u32.IsIconic(hwnd) else 5)  # SW_RESTORE / SW_SHOW
         u32.SetForegroundWindow(hwnd)
     return False
+
+
+def _second_screen():
+    """The first monitor that isn't the primary one (primary sits at 0,0)."""
+    others = [s for s in webview.screens if (s.x, s.y) != (0, 0)]
+    return others[0] if others else None
+
+
+def _no_second_monitor():
+    msg = "WATCHDOG runs fullscreen on your second monitor.\n\nConnect a second display and open it again."
+    if os.name == "nt":
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, msg, "WATCHDOG", 0x30)  # MB_ICONWARNING
+    else:
+        print(msg, file=sys.stderr)
+
+
+def _pin_to_screen(window, bounds):
+    """Keep the window fullscreen on its monitor: snap back if it is moved to
+    another one (drag, Win+Shift+Arrow), close if that monitor is unplugged.
+    Study state is saved, so closing never loses the stopwatch."""
+    from System import Action
+    from System.Windows import Forms as WinForms
+
+    form = window.native
+    device_name = None
+
+    def check():
+        nonlocal device_name
+        if device_name is None:
+            # pywebview only gives us the monitor's bounds; find its device name
+            match = [s for s in WinForms.Screen.AllScreens if s.Bounds.Equals(bounds)]
+            device_name = (match[0] if match else WinForms.Screen.FromControl(form)).DeviceName
+        screens = {s.DeviceName: s for s in WinForms.Screen.AllScreens}
+        target = screens.get(device_name)
+        if target is None:
+            form.Close()
+            return
+        if WinForms.Screen.FromControl(form).DeviceName != device_name:
+            form.WindowState = WinForms.FormWindowState.Normal
+            form.Bounds = target.Bounds
+            form.WindowState = WinForms.FormWindowState.Maximized
+
+    def on_moved(*_):
+        try:
+            form.BeginInvoke(Action(check))
+        except Exception:
+            pass
+
+    window.events.moved += on_moved
+    on_moved()  # record which monitor we're on now
+    # display added/removed or rearranged
+    from Microsoft.Win32 import SystemEvents
+    SystemEvents.DisplaySettingsChanged += lambda *_: on_moved()
 
 
 def _apply_icon(window):
@@ -187,6 +243,10 @@ def _apply_icon(window):
 def main():
     if not _single_instance():
         return
+    screen = _second_screen()
+    if screen is None:
+        _no_second_monitor()
+        return
     if os.name == "nt":
         import ctypes
         # own taskbar group + icon instead of being lumped in with python.exe
@@ -196,12 +256,15 @@ def main():
         "WATCHDOG",
         url=os.path.join(APP_DIR, "ui", "index.html"),
         js_api=api,
-        width=980, height=620, min_size=(760, 560),
+        screen=screen, fullscreen=True,  # fullscreen on the monitor it's placed on
+        width=980, height=620,
         frameless=True, easy_drag=False,
         background_color="#111111",
     )
     api._window = window
     window.events.shown += lambda: _apply_icon(window)
+    if os.name == "nt":
+        window.events.shown += lambda: _pin_to_screen(window, screen.frame)
     webview.start(debug="--debug" in sys.argv)
 
 

@@ -7,194 +7,149 @@
 <style>
   @font-face { font-family: "Orbitron"; src: url("fonts/Orbitron.ttf") format("truetype"); font-weight: 400 900; }
   :root {
-    --board: #111111; --silk: #f2f2f2; --silk-dim: #8a8a8a; --trace: #262626; --trace-live: #3a3424;
-    --gold: #e3b94d; --gold-dim: #5a4a22; --hole: #e6e6e6; --red: #ff5a4f;
+    --bg: #0c0c0c; --text: #f2f2f2; --muted: #7d7d7d; --faint: #2a2a2a;
+    --accent: #4fa8ff; --red: #ff6159;
+    --art: rgba(255, 255, 255, .26);
     --mono: "Cascadia Code", Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--board); color: var(--silk); overflow: hidden;
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden;
     font-family: "Orbitron", "Segoe UI", sans-serif; user-select: none; }
+  body { background: radial-gradient(120% 90% at 22% 60%, #161616 0%, var(--bg) 60%); }
+  body.on { --art: rgba(160, 205, 255, .8); }
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
-  :focus-visible { outline: 1px dashed var(--gold); outline-offset: 4px; }
-
-  /* board edge + mounting holes */
-  .board { position: relative; height: 100%; border: 2px solid #2c2c2c; display: grid;
-    grid-template-rows: auto auto 1fr auto; padding: 0 34px 18px; }
-  .hole { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--hole); }
-  .hole.tl { top: 8px; left: 8px; } .hole.tr { top: 8px; right: 8px; }
-  .hole.bl { bottom: 8px; left: 8px; } .hole.br { bottom: 8px; right: 8px; }
-
-  /* title bar (drag region) */
-  .titlebar { height: 34px; display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-right: 14px; }
-  .titlebar button { width: 26px; height: 20px; border: 1px solid var(--silk-dim); color: var(--silk-dim); font: 12px var(--mono); line-height: 1; }
-  .titlebar button:hover { color: var(--silk); border-color: var(--silk); }
-  .titlebar button.x:hover { color: var(--red); border-color: var(--red); }
-
-  h1 { margin: 0 0 14px; text-align: center; font-weight: 900; font-size: clamp(40px, 7.4vw, 78px);
-    letter-spacing: .06em; line-height: 1; transition: text-shadow .4s; }
-  .on h1 { text-shadow: 0 0 18px #ffffff30; }
-
-  .main { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 30px; min-height: 0; align-items: center; }
-
-  /* connectors (modules) */
-  .connectors { display: flex; gap: 14px; position: relative; }
-  .cn { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .cn-body { display: flex; gap: 6px; align-items: center; }
-  .cn-box { border: 2px solid var(--silk); padding: 8px 9px; display: grid; gap: 8px; }
-  .pin { width: 15px; height: 15px; border-radius: 50%; border: 4px solid var(--gold); background: var(--hole); }
-  .cn.nc .cn-box { border-color: var(--silk-dim); }
-  .cn.nc .pin { border-color: var(--gold-dim); background: #444; }
-  .ref { font-size: 10px; writing-mode: vertical-rl; letter-spacing: .08em; }
-  .cn.nc .ref { color: var(--silk-dim); }
-  .cn-name { font-size: 9px; letter-spacing: .14em; color: var(--silk-dim); }
-  .cn.live .cn-name { color: var(--silk); }
-  .cn .state { font: 9px var(--mono); color: var(--silk-dim); height: 12px; }
-  .cn.live.fault .state { color: var(--red); }
-  .cn.live.ok .state { color: var(--gold); }
-
-  /* U1: the stopwatch chip */
-  .chip-area { display: grid; gap: 6px; min-width: 0; }
-  .header { display: flex; justify-content: space-between; border: 2px solid var(--silk); padding: 4px 6px; }
-  .ring { width: 13px; height: 13px; border-radius: 50%; border: 3px solid var(--gold-dim); background: #555; transition: all .25s; }
-  .ring.hot { border-color: var(--gold); background: var(--hole); box-shadow: 0 0 8px var(--gold); }
-  .silk-label { font-size: 10px; text-align: center; transform: rotate(180deg); color: var(--silk); letter-spacing: .1em; }
-  .chip { position: relative; border-left: 2px solid var(--silk); border-right: 2px solid var(--silk); padding: 0 10px; }
-  .pads { display: flex; justify-content: space-between; gap: 3px; }
-  .pad { flex: 1; max-width: 16px; height: 30px; background: var(--gold-dim); transition: background .2s, box-shadow .2s; }
-  .pad.lit { background: var(--gold); }
-  .pad.head { box-shadow: 0 0 12px var(--gold); }
-  .core { display: grid; grid-template-columns: auto 1fr auto; align-items: center; padding: 16px 0; gap: 12px; }
-  .via { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--silk); display: grid; place-items: center; }
-  .via::after { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--silk); }
-  .vias { display: grid; gap: 34px; }
-  .readout { text-align: center; }
-  .time { font-weight: 800; font-size: clamp(44px, 8vw, 88px); letter-spacing: .04em; line-height: 1;
-    font-variant-numeric: tabular-nums; color: #5c5c5c; transition: color .4s, text-shadow .4s; }
-  .on .time { color: var(--silk); text-shadow: 0 0 22px #ffffff28; }
-  .seconds { margin-top: 10px; font: 12px var(--mono); color: var(--silk-dim); letter-spacing: .12em; }
-  .seconds b { color: var(--gold); font-weight: 400; }
-  .smd { display: flex; gap: 8px; justify-content: flex-end; position: absolute; right: 18px; top: 46px; }
-  .smd span { width: 16px; height: 13px; background: var(--gold-dim); }
-  .on .smd span { background: var(--gold); }
-  .on .smd span:nth-child(2) { animation: blink 1s steps(1) infinite; }
-  @keyframes blink { 50% { background: var(--gold-dim); } }
-
-  /* SW1 + status strip */
-  .bottom { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 26px; align-items: center; margin-top: 16px; }
-  .sw { display: flex; align-items: center; gap: 14px; }
-  .sw-body { position: relative; width: 132px; height: 52px; border: 2px solid var(--silk); }
-  .sw-pad { position: absolute; top: 9px; width: 22px; height: 30px; background: var(--gold-dim); transition: background .3s; }
-  .sw-pad.l { left: 8px; } .sw-pad.r { right: 8px; }
-  .sw-knob { position: absolute; top: 6px; left: 36px; width: 28px; height: 36px; border: 2px solid var(--silk);
-    background: #1c1c1c; transition: left .25s cubic-bezier(.5,1.6,.6,1); }
-  .on .sw-knob { left: 64px; background: var(--silk); }
-  .on .sw-pad.r { background: var(--gold); }
-  .sw-text { display: grid; gap: 3px; text-align: left; }
-  .sw-text strong { font-size: 15px; letter-spacing: .1em; }
-  .sw-text span { font-size: 10px; color: var(--silk-dim); letter-spacing: .14em; }
-  .on .sw-text span { color: var(--gold); }
-  .sw:hover .sw-body { box-shadow: 0 0 0 1px #ffffff30, 0 0 16px #ffffff14; }
-  .sw:disabled { opacity: .5; cursor: wait; }
-
-  .status { font: 11px var(--mono); color: var(--silk-dim); min-width: 0; display: flex; gap: 10px; align-items: center; }
-  .led { flex: none; width: 10px; height: 10px; border-radius: 2px; background: #333; }
-  .led.ok { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
-  .led.busy { background: var(--gold); animation: blink .5s steps(1) infinite; }
-  .led.fault { background: var(--red); box-shadow: 0 0 8px var(--red); }
-  .status-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .status button { flex: none; border: 1px solid var(--red); color: var(--red); padding: 2px 8px; font-size: 10px; }
-  .stats { text-align: right; font: 11px var(--mono); color: var(--silk-dim); line-height: 1.7; letter-spacing: .08em; }
-  .stats b { color: var(--silk); font-weight: 400; }
-
-  .traces { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-  .board > *:not(.traces):not(.hole) { position: relative; z-index: 1; }
-  .connectors { margin-top: 70px; }
-  .traces path { stroke: var(--trace); stroke-width: 3; fill: none; }
-  .on .traces path.live { stroke: var(--trace-live); }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; }
   [hidden] { display: none !important; }
+
+  /* Frieren: the PNG is a mask, so its colour follows --art */
+  .art { position: absolute; left: -2%; bottom: 0; width: 63%; height: 100%;
+    background: var(--art); transition: background 1.2s ease;
+    /* luminance: white = drawn, black = empty, so a plain white-on-black image
+       works as-is (a transparent PNG with white lines works too) */
+    mask-image: url("img/frieren-mask.png"), linear-gradient(90deg, #fff 48%, transparent 90%);
+    mask-mode: luminance, alpha; mask-composite: intersect;
+    mask-size: cover, 100% 100%; mask-position: 35% 100%, 0 0; mask-repeat: no-repeat; }
+  .on .art { animation: breathe 6s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .82; } }
+
+  .titlebar { position: absolute; inset: 0 0 auto 0; height: 40px; z-index: 3; display: flex;
+    justify-content: flex-end; align-items: center; gap: 2px; padding-right: 10px; }
+  .titlebar button { width: 34px; height: 26px; color: var(--muted); font: 14px var(--mono); border-radius: 6px; }
+  .titlebar button:hover { color: var(--text); background: #ffffff10; }
+  .titlebar button.x:hover { color: #fff; background: #c42b1c; }
+
+  .panel { position: absolute; z-index: 2; top: 0; right: 0; bottom: 0; width: min(470px, 52%);
+    padding: 46px 44px 30px 10px; display: flex; flex-direction: column; }
+
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  h1 { margin: 0; font-weight: 900; font-size: 44px; letter-spacing: .08em; line-height: 1; }
+  .ver { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .1em; }
+  .tagline { margin: 10px 0 0; color: var(--muted); font-size: 10px; letter-spacing: .32em; text-transform: uppercase; }
+
+  .clock { margin-top: auto; }
+  .eyebrow { font-size: 10px; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
+  .on .eyebrow { color: var(--accent); }
+  .time { margin-top: 8px; font-weight: 800; font-size: 74px; letter-spacing: .03em; line-height: 1;
+    font-variant-numeric: tabular-nums; color: #4a4a4a; transition: color .5s, text-shadow .5s; }
+  .on .time { color: var(--text); text-shadow: 0 0 26px #ffffff1f; }
+  .seconds { margin-top: 10px; font: 12px var(--mono); color: var(--muted); letter-spacing: .1em; }
+  .seconds b { color: var(--accent); font-weight: 400; }
+  /* a quiet 60-tick second hand */
+  .ticks { display: flex; gap: 3px; margin-top: 16px; height: 4px; }
+  .ticks i { flex: 1; border-radius: 2px; background: var(--faint); transition: background .3s; }
+  .ticks i.lit { background: #2d5f94; }
+  .ticks i.head { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  .switch { margin-top: 30px; display: flex; align-items: center; gap: 16px; width: 100%; text-align: left;
+    padding: 14px 16px; border: 1px solid #ffffff18; border-radius: 14px; background: #ffffff06;
+    transition: border-color .3s, background .3s; }
+  .switch:hover { border-color: #ffffff35; background: #ffffff0a; }
+  .on .switch { border-color: #4fa8ff66; background: #4fa8ff0f; }
+  .track { flex: none; position: relative; width: 58px; height: 30px; border-radius: 15px; background: #2b2b2b; transition: background .3s; }
+  .knob { position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; background: #8a8a8a;
+    transition: left .28s cubic-bezier(.4,1.5,.6,1), background .3s; }
+  .on .track { background: var(--accent); }
+  .on .knob { left: 32px; background: #121212; }
+  .switch-text { display: grid; gap: 4px; }
+  .switch-text strong { font-size: 14px; letter-spacing: .14em; }
+  .switch-text span { font: 11px var(--mono); color: var(--muted); }
+  .switch:disabled { opacity: .55; cursor: wait; }
+
+  .modules { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 9px; font: 12px var(--mono); }
+  .modules li { display: grid; grid-template-columns: 10px 70px minmax(0, 1fr) auto; gap: 10px; align-items: center; color: var(--muted); }
+  .modules li.soon { opacity: .5; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot.busy { background: var(--accent); animation: blink .6s steps(1) infinite; }
+  .dot.fault { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  @keyframes blink { 50% { opacity: .2; } }
+  .mod-name { color: var(--text); letter-spacing: .04em; }
+  .mod-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fault .mod-info, li.fault .mod-info { color: var(--red); }
+  .retry { border: 1px solid var(--red); color: var(--red); border-radius: 6px; padding: 1px 8px; font: 10px var(--mono); }
+
+  .stats { display: flex; gap: 28px; margin-top: 22px; padding-top: 16px; border-top: 1px solid #ffffff12;
+    font: 11px var(--mono); color: var(--muted); letter-spacing: .1em; }
+  .stats b { display: block; margin-top: 4px; color: var(--text); font: 600 15px "Orbitron", sans-serif; letter-spacing: .06em; }
+
+  @media (prefers-reduced-motion: reduce) { .on .art, .dot.busy { animation: none; } }
 </style>
 </head>
 <body>
-<div class="board" id="board">
-  <svg class="traces" id="traces" aria-hidden="true"></svg>
-  <span class="hole tl"></span><span class="hole tr"></span><span class="hole bl"></span><span class="hole br"></span>
+  <div class="art" aria-hidden="true"></div>
 
-  <div class="titlebar pywebview-drag-region">
-    <button type="button" id="min" aria-label="Minimize">_</button>
-    <button type="button" class="x" id="close" aria-label="Close">x</button>
+  <div class="titlebar">
+    <button type="button" id="min" aria-label="Minimize">&#8211;</button>
+    <button type="button" class="x" id="close" aria-label="Close">&#10005;</button>
   </div>
 
-  <h1 class="pywebview-drag-region">WATCHDOG V1</h1>
-
-  <div class="main">
-    <div class="connectors" id="connectors">
-      <div class="cn live" id="cn-lights">
-        <div class="cn-body"><div class="cn-box"><i class="pin"></i><i class="pin"></i><i class="pin"></i><i class="pin"></i></div><span class="ref">CN1</span></div>
-        <div class="cn-name">LIGHTS</div><div class="state" id="lights-state">--</div>
-      </div>
-      <div class="cn nc">
-        <div class="cn-body"><div class="cn-box"><i class="pin"></i><i class="pin"></i><i class="pin"></i><i class="pin"></i></div><span class="ref">CN2</span></div>
-        <div class="cn-name">PHONE</div><div class="state">N/C</div>
-      </div>
-      <div class="cn nc">
-        <div class="cn-body"><div class="cn-box"><i class="pin"></i><i class="pin"></i><i class="pin"></i><i class="pin"></i></div><span class="ref">CN3</span></div>
-        <div class="cn-name">APPS</div><div class="state">N/C</div>
-      </div>
+  <main class="panel">
+    <div>
+      <div class="brand"><h1>WATCHDOG</h1><span class="ver">V1</span></div>
+      <p class="tagline">focus is a long journey</p>
     </div>
 
-    <div class="chip-area" id="chip">
-      <div class="header" id="h2"></div>
-      <div class="silk-label">H2</div>
-      <div class="chip">
-        <div class="pads" id="pads-top"></div>
-        <div class="core">
-          <div class="vias"><span class="via"></span><span class="via"></span></div>
-          <div class="readout">
-            <div class="time" id="time">00:00:00</div>
-            <div class="seconds" id="seconds">T+ <b>0</b> S</div>
-          </div>
-          <div></div>
-        </div>
-        <div class="smd"><span></span><span></span><span></span></div>
-        <div class="pads" id="pads-bottom"></div>
-      </div>
-      <div class="silk-label">U1</div>
-      <div class="header" id="h3"></div>
-    </div>
-  </div>
+    <section class="clock" aria-live="off">
+      <div class="eyebrow" id="eyebrow">Last session</div>
+      <div class="time" id="time">00:00:00</div>
+      <div class="seconds" id="seconds">T+ <b>0</b> s</div>
+      <div class="ticks" id="ticks" aria-hidden="true"></div>
+    </section>
 
-  <div class="bottom">
-    <button type="button" class="sw" id="toggle" aria-pressed="false">
-      <span class="sw-body"><span class="sw-pad l"></span><span class="sw-pad r"></span><span class="sw-knob"></span></span>
-      <span class="sw-text"><strong>STUDY MODE</strong><span id="mode-label">SW1 / OFF</span></span>
+    <button type="button" class="switch" id="toggle" aria-pressed="false">
+      <span class="track"><span class="knob"></span></span>
+      <span class="switch-text"><strong>STUDY MODE</strong><span id="mode-label">off · press space</span></span>
     </button>
-    <div class="status">
-      <span class="led" id="led"></span>
-      <span class="status-text" id="status-text">connecting...</span>
-      <button type="button" id="retry" hidden>RETRY</button>
+
+    <ul class="modules">
+      <li id="mod-lights"><span class="dot" id="led"></span><span class="mod-name">Lights</span>
+        <span class="mod-info" id="status-text">connecting...</span><button type="button" class="retry" id="retry" hidden>retry</button></li>
+      <li class="soon"><span class="dot"></span><span class="mod-name">Phone</span><span class="mod-info">lockdown · coming soon</span></li>
+      <li class="soon"><span class="dot"></span><span class="mod-name">Apps</span><span class="mod-info">blocker · coming soon</span></li>
+    </ul>
+
+    <div class="stats">
+      <div>LAST<b id="last">00:00:00</b></div>
+      <div>TODAY<b id="today">00:00:00</b></div>
     </div>
-    <div class="stats">LAST <b id="last">00:00:00</b><br>TODAY <b id="today">00:00:00</b></div>
-  </div>
-</div>
+  </main>
 
 <script>
-  const PADS = 30, RINGS = 26;
   const $ = (id) => document.getElementById(id);
-  const make = (parent, n, cls) => Array.from({ length: n }, () => {
-    const el = document.createElement('i'); el.className = cls; parent.appendChild(el); return el; });
-  const padsTop = make($('pads-top'), PADS, 'pad');
-  const padsBottom = make($('pads-bottom'), PADS, 'pad').reverse(); // seconds 30-59 run right-to-left
-  const pads = [...padsTop, ...padsBottom];
-  const ringsTop = make($('h2'), RINGS, 'ring');
-  const ringsBottom = make($('h3'), RINGS, 'ring');
-
+  // Designed at 980x620; scale the whole page to fill whatever screen it's on.
+  function fit() {
+    document.documentElement.style.zoom = Math.max(0.6, Math.min(innerWidth / 980, innerHeight / 620));
+  }
+  fit();
+  addEventListener('resize', fit);
+  const ticks = Array.from({ length: 60 }, () => $('ticks').appendChild(document.createElement('i')));
   let state = null, offset = 0, busy = false;
 
   const hms = (s) => [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60]
     .map((v) => String(v).padStart(2, '0')).join(':');
 
   function elapsed() {
-    if (!state || !state.studying) return state ? state.last_session : 0;
+    if (!state.studying) return state.last_session;
     return Math.max(0, Math.floor(Date.now() / 1000 + offset - state.started_at));
   }
 
@@ -202,34 +157,27 @@
     if (!state) return;
     const on = state.studying, s = elapsed();
     $('time').textContent = hms(s);
-    $('seconds').innerHTML = `T+ <b>${s}</b> S`;
-    const today = state.today_total + (on ? s : 0);
-    $('today').textContent = hms(today);
+    $('seconds').innerHTML = `T+ <b>${s}</b> s`;
+    $('today').textContent = hms(state.today_total + (on ? s : 0));
     $('last').textContent = hms(state.last_session);
-    // pads around U1 = the second hand; header rings = a scanner
     const sec = on ? s % 60 : -1;
-    pads.forEach((p, i) => { p.classList.toggle('lit', on && i <= sec); p.classList.toggle('head', i === sec); });
-    const r = on ? s % (RINGS * 2) : -1;
-    ringsTop.forEach((el, i) => el.classList.toggle('hot', i === r));
-    ringsBottom.forEach((el, i) => el.classList.toggle('hot', RINGS * 2 - 1 - i === r));
+    ticks.forEach((t, i) => { t.classList.toggle('lit', i < sec); t.classList.toggle('head', i === sec); });
   }
 
   function render(next) {
     state = next;
     offset = state.now - Date.now() / 1000;
-    const on = state.studying;
+    const on = state.studying, L = state.lights;
     document.body.classList.toggle('on', on);
     $('toggle').setAttribute('aria-pressed', String(on));
-    $('mode-label').textContent = on ? 'SW1 / ON' : 'SW1 / OFF';
-    const L = state.lights, cn = $('cn-lights');
-    $('led').className = 'led ' + (L.busy ? 'busy' : L.ok === true ? 'ok' : L.ok === false ? 'fault' : '');
-    $('status-text').textContent = L.ok === false ? `LIGHTS FAULT // ${L.message}` : L.ok === null && !L.busy
-      ? 'LIGHTS // standing by' : `LIGHTS // ${L.message}`;
+    $('mode-label').textContent = on ? 'on · lights set to study' : 'off · press space';
+    $('eyebrow').textContent = on ? 'Studying' : 'Last session';
+    $('led').className = 'dot ' + (L.busy ? 'busy' : L.ok === true ? 'ok' : L.ok === false ? 'fault' : '');
+    $('mod-lights').classList.toggle('fault', L.ok === false);
+    $('status-text').textContent = L.busy ? L.message : L.ok === false ? L.message
+      : L.ok === true ? `jerry-nuc · ${on ? 'study' : 'relax'}` : 'jerry-nuc · standing by';
     $('status-text').title = L.message;
     $('retry').hidden = L.ok !== false;
-    cn.classList.toggle('ok', L.ok === true);
-    cn.classList.toggle('fault', L.ok === false);
-    $('lights-state').textContent = L.busy ? 'TX...' : L.ok === true ? (on ? 'STUDY' : 'RELAX') : L.ok === false ? 'FAULT' : '--';
     tick();
   }
 
@@ -240,38 +188,20 @@
     finally { busy = false; $('toggle').disabled = false; }
   }
 
-  function drawTraces() {
-    // copper traces from each connector into U1's left edge
-    // Leftmost connector takes the highest lane so no two traces cross.
-    const svg = $('traces'), board = $('board').getBoundingClientRect();
-    const body = document.querySelector('.chip').getBoundingClientRect();
-    const paths = [...document.querySelectorAll('.cn-box')].map((box, i) => {
-      const b = box.getBoundingClientRect();
-      const x1 = b.left + b.width / 2 - board.left, y1 = b.top - board.top;
-      const lane = body.top - board.top + 18 + i * 16;
-      const x2 = body.left - board.left;
-      const bend = Math.min(10, (y1 - lane) / 2);
-      return `<path class="${i === 0 ? 'live' : ''}" d="M${x1},${y1} V${lane + bend} L${x1 + bend},${lane} H${x2}"/>`;
-    });
-    svg.setAttribute('viewBox', `0 0 ${board.width} ${board.height}`);
-    svg.innerHTML = paths.join('');
-  }
-
   $('toggle').addEventListener('click', toggle);
   $('retry').addEventListener('click', async () => render(await window.pywebview.api.retry_lights()));
   $('min').addEventListener('click', () => window.pywebview.api.minimize());
   $('close').addEventListener('click', () => window.pywebview.api.close());
-  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); toggle(); } });
-  window.addEventListener('resize', drawTraces);
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !e.repeat && e.target.tagName !== 'BUTTON') { e.preventDefault(); toggle(); }
+  });
 
   window.addEventListener('pywebviewready', async () => {
     render(await window.pywebview.api.get_state());
-    drawTraces();
     setInterval(tick, 250);
-    // pick up SSH results (they finish in the background)
+    // SSH results finish in the background; pick them up
     setInterval(async () => { if (!busy) render(await window.pywebview.api.get_state()); }, 1000);
   });
-  document.fonts.ready.then(drawTraces);
 </script>
 </body>
 </html>
